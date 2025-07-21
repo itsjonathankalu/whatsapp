@@ -3,7 +3,7 @@ import { BadRequestError } from './errors';
 export class PhoneUtils {
     /**
      * Format Brazilian phone number for WhatsApp
-     * Handles various Brazilian phone formats and normalizes them
+     * WhatsApp uses the OLD format without the 9th digit
      */
     static formatBrazilianPhone(phone: string): string {
         // Remove all non-numeric characters
@@ -19,14 +19,17 @@ export class PhoneUtils {
             throw new BadRequestError('Invalid Brazilian phone number length');
         }
 
-        // Handle 9th digit for mobile numbers
-        if (cleaned.length === 12) {
-            const areaCode = cleaned.substring(2, 4);
-            const number = cleaned.substring(4);
+        // Remove 9th digit for mobile numbers (WhatsApp uses old format)
+        if (cleaned.length === 13) {
+            const countryCode = cleaned.substring(0, 2);  // 55
+            const areaCode = cleaned.substring(2, 4);     // 41
+            const ninthDigit = cleaned.substring(4, 5);   // 9
+            const firstDigit = cleaned.substring(5, 6);   // 9, 8, 7, etc
+            const restOfNumber = cleaned.substring(5);    // 96749101
 
-            // Check if it's a mobile number (starts with 7, 8, or 9)
-            if (['7', '8', '9'].includes(number[0])) {
-                cleaned = `55${areaCode}9${number}`;
+            // Check if it's a mobile with 9th digit (9 followed by 7, 8, or 9)
+            if (ninthDigit === '9' && ['7', '8', '9'].includes(firstDigit)) {
+                cleaned = countryCode + areaCode + restOfNumber;
             }
         }
 
