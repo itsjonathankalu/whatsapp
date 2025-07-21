@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  whatsapp-api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - API_KEY=${API_KEY}
+    volumes:
+      - whatsapp_sessions:/app/.wwebjs_auth
+    restart: unless-stopped
+
+volumes:
+  whatsapp_sessions: 
