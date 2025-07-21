@@ -11,12 +11,18 @@ declare module 'fastify' {
 export const authPlugin: FastifyPluginAsync = async (fastify) => {
     fastify.addHook('onRequest', async (request, reply) => {
         // Skip auth for health check
-        if (request.url.startsWith('/health')) return;
+        if (request.url.startsWith('/health')) {
+            return;
+        }
 
         const apiKey = request.headers['x-api-key'] as string;
         const tenantId = request.headers['x-tenant-id'] as string;
 
-        if (!apiKey || apiKey !== config.apiKey) {
+        if (!apiKey) {
+            throw new UnauthorizedError('API key is required');
+        }
+
+        if (apiKey !== config.apiKey) {
             throw new UnauthorizedError('Invalid API key');
         }
 

@@ -1,6 +1,6 @@
 import { clientManager } from '@shared/whatsapp/client-manager';
 import { PhoneUtils } from '@shared/lib/phone-utils';
-import { BadRequestError, ServiceUnavailableError } from '@shared/lib/errors';
+import { ServiceUnavailableError } from '@shared/lib/errors';
 import { MessageMedia as WppMessageMedia } from 'whatsapp-web.js';
 import { SendMessageInput, MessageSent } from './messages.schema';
 import { logger } from '@shared/lib/logger';
@@ -10,16 +10,24 @@ export class MessagesService {
         tenantId: string,
         input: SendMessageInput
     ): Promise<MessageSent> {
-        const instance = await clientManager.waitForReady(tenantId);
-
-        if (!instance.isReady) {
-            throw new ServiceUnavailableError('WhatsApp session not connected');
+        // Check if client exists first
+        const existingInstance = clientManager.getClient(tenantId);
+        if (!existingInstance) {
+            throw new ServiceUnavailableError(
+                'No WhatsApp session found. Please initialize a session first.'
+            );
         }
 
-        const chatId = PhoneUtils.toWhatsAppId(input.to);
-        let result;
-
         try {
+            const instance = await clientManager.waitForReady(tenantId, 10000);
+
+            if (!instance.isReady) {
+                throw new ServiceUnavailableError('WhatsApp session not connected');
+            }
+
+            const chatId = PhoneUtils.toWhatsAppId(input.to);
+            let result;
+
             if (input.media) {
                 const media = new WppMessageMedia(
                     input.media.mimetype,
@@ -48,6 +56,11 @@ export class MessagesService {
 
         } catch (error) {
             logger.error('Failed to send message', { error, tenantId });
+
+            if (error instanceof ServiceUnavailableError) {
+                throw error;
+            }
+
             throw new ServiceUnavailableError('Failed to send message');
         }
     }

@@ -1,4 +1,5 @@
 node_modules/
 dist/
+.wwebjs_auth/
 .DS_Store
 .env

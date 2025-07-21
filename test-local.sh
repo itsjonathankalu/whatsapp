@@ -1,0 +1,165 @@
+#!/bin/bash
+# test-local.sh - macOS compatible version
+
+API_KEY="${API_KEY:-change-me-in-production}"
+BASE_URL="${BASE_URL:-http://localhost:3000}"
+TENANT_ID="test-tenant-$(date +%s)"
+TEST_NUMBER="${TEST_NUMBER:-5511999887766}"
+
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo "🚀 Starting TickTick API Tests..."
+echo "📋 Using tenant: $TENANT_ID"
+echo "📞 Test number: $TEST_NUMBER"
+echo "🔑 Using API key: $API_KEY"
+
+# Function to check if jq is installed
+check_jq() {
+  if ! command -v jq &> /dev/null; then
+    echo -e "${YELLOW}⚠️  jq not found. Installing...${NC}"
+    brew install jq
+  fi
+}
+
+# Function to pretty print JSON
+print_json() {
+  if command -v jq &> /dev/null; then
+    jq .
+  else
+    cat
+  fi
+}
+
+# Function to check API response for errors
+check_response() {
+  local response="$1"
+  local step="$2"
+  
+  if echo "$response" | grep -q '"statusCode".*[45][0-9][0-9]'; then
+    echo -e "${RED}❌ $step failed:${NC}"
+    echo "$response" | print_json
+    return 1
+  fi
+  return 0
+}
+
+check_jq
+
+# 1. Health Check
+echo -e "\n🔍 Testing Health Check..."
+HEALTH_RESPONSE=$(curl -s $BASE_URL/health)
+echo "$HEALTH_RESPONSE" | print_json
+
+# 2. Initialize Session
+echo -e "\n${YELLOW}📱 Initializing WhatsApp session...${NC}"
+SESSION_RESPONSE=$(curl -s -X POST $BASE_URL/api/v1/sessions \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Tenant-Id: $TENANT_ID")
+
+if ! check_response "$SESSION_RESPONSE" "Session initialization"; then
+  echo -e "${RED}Stopping tests due to session initialization failure${NC}"
+  exit 1
+fi
+
+echo "$SESSION_RESPONSE" | print_json
+
+# Check if QR code is present
+if echo "$SESSION_RESPONSE" | grep -q "qrCode"; then
+  echo -e "\n${YELLOW}📱 QR Code received! Scan it with WhatsApp${NC}"
+  echo "Waiting for connection..."
+  
+  # Poll for connection status
+  MAX_ATTEMPTS=30
+  ATTEMPT=0
+  while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    STATUS_RESPONSE=$(curl -s $BASE_URL/api/v1/sessions/status \
+      -H "X-API-Key: $API_KEY" \
+      -H "X-Tenant-Id: $TENANT_ID")
+    
+    STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status' 2>/dev/null || echo "error")
+    
+    if [ "$STATUS" = "connected" ]; then
+      echo -e "\n${GREEN}✅ Connected!${NC}"
+      break
+    elif [ "$STATUS" = "error" ] || [ "$STATUS" = "disconnected" ]; then
+      echo -e "\n${RED}❌ Connection failed${NC}"
+      echo "$STATUS_RESPONSE" | print_json
+      exit 1
+    fi
+    
+    printf "."
+    sleep 2
+    ATTEMPT=$((ATTEMPT + 1))
+  done
+  
+  if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+    echo -e "\n${RED}❌ Connection timeout after $((MAX_ATTEMPTS * 2)) seconds${NC}"
+    exit 1
+  fi
+else
+  echo -e "${YELLOW}No QR code in response, session might already be connected${NC}"
+fi
+
+# 3. Check final session status before sending message
+echo -e "\n📊 Checking session status before sending message..."
+STATUS_RESPONSE=$(curl -s $BASE_URL/api/v1/sessions/status \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Tenant-Id: $TENANT_ID")
+
+echo "$STATUS_RESPONSE" | print_json
+
+STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status' 2>/dev/null || echo "error")
+if [ "$STATUS" != "connected" ]; then
+  echo -e "${YELLOW}⚠️  Session not connected, skipping message test${NC}"
+else
+  # 4. Send Test Message
+  echo -e "\n📤 Sending test message..."
+  MESSAGE_RESPONSE=$(curl -s -X POST $BASE_URL/api/v1/messages/send \
+    -H "X-API-Key: $API_KEY" \
+    -H "X-Tenant-Id: $TENANT_ID" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"to\": \"$TEST_NUMBER\",
+      \"message\": \"🚀 TickTick test message $(date +'%H:%M:%S')\"
+    }")
+
+  if ! check_response "$MESSAGE_RESPONSE" "Message sending"; then
+    echo -e "${YELLOW}Message sending failed, but continuing with other tests${NC}"
+  else
+    echo "$MESSAGE_RESPONSE" | print_json
+  fi
+fi
+
+# 5. Configure Webhook (using webhook.site for testing)
+echo -e "\n🔗 Configuring webhook..."
+WEBHOOK_UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')  # macOS compatible UUID generation
+WEBHOOK_URL="https://webhook.site/$WEBHOOK_UUID"
+
+WEBHOOK_RESPONSE=$(curl -s -X POST $BASE_URL/api/v1/webhooks \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Tenant-Id: $TENANT_ID" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"url\": \"$WEBHOOK_URL\",
+    \"events\": [\"message\", \"message_ack\", \"connected\", \"disconnected\"],
+    \"secret\": \"test-secret-123\"
+  }")
+
+if ! check_response "$WEBHOOK_RESPONSE" "Webhook configuration"; then
+  echo -e "${YELLOW}Webhook configuration failed, but continuing${NC}"
+else
+  echo "$WEBHOOK_RESPONSE" | print_json
+  echo -e "${YELLOW}📨 Check your webhooks at: $WEBHOOK_URL${NC}"
+fi
+
+# 6. Final health check
+echo -e "\n🏁 Final health check..."
+curl -s $BASE_URL/health | print_json
+
+echo -e "\n${GREEN}✅ All tests completed!${NC}"
+echo -e "Tenant ID: ${YELLOW}$TENANT_ID${NC}"
+echo -e "Keep this terminal open to maintain the session"

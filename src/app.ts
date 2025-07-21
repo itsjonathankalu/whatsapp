@@ -5,8 +5,8 @@ import rateLimit from '@fastify/rate-limit';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 
 import { config } from '@shared/lib/config';
-import { authPlugin } from '@shared/plugins/auth';
 import { errorHandlerPlugin } from '@shared/plugins/error-handler';
+import { UnauthorizedError } from '@shared/lib/errors';
 
 import { sessionsRoutes } from '@features/sessions';
 import { messagesRoutes } from '@features/messages';
@@ -42,11 +42,35 @@ export async function buildApp() {
         });
     }
 
-    // Custom plugins
-    await app.register(authPlugin);
+    // Global error handler
     await app.register(errorHandlerPlugin);
 
-    // API routes
+    // Auth hook for API routes
+    app.addHook('onRequest', async (request, reply) => {
+        // Skip auth for health check
+        if (request.url.startsWith('/health')) {
+            return;
+        }
+
+        const apiKey = request.headers['x-api-key'] as string;
+        const tenantId = request.headers['x-tenant-id'] as string;
+
+        if (!apiKey) {
+            throw new UnauthorizedError('API key is required');
+        }
+
+        if (apiKey !== config.apiKey) {
+            throw new UnauthorizedError('Invalid API key');
+        }
+
+        if (!tenantId) {
+            throw new UnauthorizedError('Tenant ID is required');
+        }
+
+        request.tenantId = tenantId;
+    });
+
+    // Routes
     await app.register(healthRoutes, { prefix: '/health' });
     await app.register(sessionsRoutes, { prefix: '/api/v1/sessions' });
     await app.register(messagesRoutes, { prefix: '/api/v1/messages' });
