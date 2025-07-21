@@ -1,11 +1,11 @@
 {
-    "name": "@ticktick/whatsapp-api",
+    "name": "@ticktick/whatsapp",
     "version": "1.0.0",
     "description": "Production-ready WhatsApp API built with Fastify",
     "main": "dist/server.js",
     "scripts": {
         "dev": "tsx watch src/server.ts",
-        "build": "tsc",
+        "build": "tsc && tsc-alias",
         "start": "node dist/server.js",
         "test": "vitest",
         "lint": "biome check --apply .",
@@ -26,6 +26,7 @@
     "devDependencies": {
         "@biomejs/biome": "^1.5.3",
         "@types/node": "^20.11.0",
+        "tsc-alias": "^1.8.16",
         "tsx": "^4.7.0",
         "typescript": "^5.3.3",
         "vitest": "^1.2.0"
