@@ -34,6 +34,35 @@ print_json() {
   fi
 }
 
+# Function to display QR code in terminal
+display_qr() {
+  local qr_data="$1"
+  
+  # Method 1: Try qrcode-terminal with small size
+  if command -v qrcode-terminal &> /dev/null; then
+    echo "$qr_data" | qrcode-terminal -s small
+  # Method 2: Try Python with smaller output
+  elif command -v python3 &> /dev/null; then
+    python3 -c "
+try:
+    import qrcode
+    qr = qrcode.QRCode(version=1, box_size=1, border=1)
+    qr.add_data('''$qr_data''')
+    qr.make(fit=True)
+    qr.print_ascii(invert=True)
+except ImportError:
+    print('Install qrcode: pip3 install qrcode')
+    print('QR Data:', '''$qr_data'''[:50], '...')
+"
+  else
+    # Method 3: Show shortened version
+    echo -e "${YELLOW}QR Code Data (truncated):${NC}"
+    echo "${qr_data:0:60}..."
+    echo -e "\n${YELLOW}To see QR code, run:${NC}"
+    echo "echo '$qr_data' | qrcode-terminal -s small"
+  fi
+}
+
 # Function to check API response for errors
 check_response() {
   local response="$1"
@@ -67,10 +96,19 @@ fi
 
 echo "$SESSION_RESPONSE" | print_json
 
-# Check if QR code is present
+# Check if QR code is present and display it
 if echo "$SESSION_RESPONSE" | grep -q "qrCode"; then
-  echo -e "\n${YELLOW}📱 QR Code received! Scan it with WhatsApp${NC}"
-  echo "Waiting for connection..."
+  QR_CODE=$(echo "$SESSION_RESPONSE" | jq -r '.qrCode')
+  
+  echo -e "\n${YELLOW}📱 QR Code received! Scan it with WhatsApp:${NC}"
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  display_qr "$QR_CODE"
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "\n${YELLOW}Instructions:${NC}"
+  echo "1. Open WhatsApp on your phone"
+  echo "2. Go to Settings → Linked Devices → Link a Device"
+  echo "3. Scan the QR code above"
+  echo -e "\nWaiting for connection..."
   
   # Poll for connection status
   MAX_ATTEMPTS=30
