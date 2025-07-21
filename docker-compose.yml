@@ -3,6 +3,9 @@ services:
     build: .
     ports:
       - "3000:3000"
+    labels:
+      - "caddy=http://api.tictic.dev"
+      - "caddy.reverse_proxy={{upstreams 3000}}"      
     environment:
       - NODE_ENV=production
       - API_KEY=${API_KEY}
