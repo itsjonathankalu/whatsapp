@@ -54,6 +54,10 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /app
 
+# Create .wwebjs_auth directory with correct ownership
+RUN mkdir -p /app/.wwebjs_auth && \
+    chown -R nodejs:nodejs /app
+    
 USER nodejs
 
 EXPOSE 3000

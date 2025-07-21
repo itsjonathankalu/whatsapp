@@ -2,7 +2,7 @@
 # test-local.sh - macOS compatible version
 
 API_KEY="${API_KEY:-change-me-in-production}"
-BASE_URL="${BASE_URL:-http://localhost:3000}"
+BASE_URL="${BASE_URL:-https://api.tictic.dev}"
 TENANT_ID="test-tenant-$(date +%s)"
 TEST_NUMBER="${TEST_NUMBER:-5511999887766}"
 

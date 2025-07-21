@@ -3,15 +3,14 @@ services:
     build: .
     ports:
       - "3000:3000"
-    labels:
-      - "caddy=http://api.tictic.dev"
-      - "caddy.reverse_proxy={{upstreams 3000}}"      
     environment:
       - NODE_ENV=production
       - API_KEY=${API_KEY}
+      - PORT=3000
     volumes:
       - whatsapp_sessions:/app/.wwebjs_auth
     restart: unless-stopped
 
 volumes:
-  whatsapp_sessions: 
+  whatsapp_sessions:
+    driver: local
