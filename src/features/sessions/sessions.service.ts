@@ -1,13 +1,12 @@
 import { clientManager } from '@shared/whatsapp/client-manager';
 import { logger } from '@shared/lib/logger';
-import { NotFoundError } from '@shared/lib/errors';
 import { SessionStatus } from './sessions.schema';
 
 export class SessionsService {
     async initializeSession(tenantId: string): Promise<SessionStatus> {
-        let instance = clientManager.getClient(tenantId);
+        const instance = await clientManager.getOrCreateClient(tenantId);
 
-        if (instance?.isReady) {
+        if (instance.isReady) {
             return {
                 sessionId: tenantId,
                 status: 'connected',
@@ -15,11 +14,7 @@ export class SessionsService {
             };
         }
 
-        if (!instance) {
-            instance = await clientManager.createClient(tenantId);
-        }
-
-        // Wait a bit for QR code generation
+        // Wait for QR code
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         return {
@@ -30,13 +25,12 @@ export class SessionsService {
     }
 
     async getSessionStatus(tenantId: string): Promise<SessionStatus> {
-        const instance = clientManager.getClient(tenantId);
+        // First try to get existing
+        let instance = clientManager.getClient(tenantId);
 
+        // If doesn't exist, create it
         if (!instance) {
-            return {
-                sessionId: tenantId,
-                status: 'disconnected'
-            };
+            instance = await clientManager.getOrCreateClient(tenantId);
         }
 
         if (instance.isReady) {

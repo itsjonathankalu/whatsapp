@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo "🚀 Starting TickTick API Tests..."
+echo "🚀 Starting TicTic API Tests..."
 echo "📋 Using tenant: $TENANT_ID"
 echo "📞 Test number: $TEST_NUMBER"
 echo "🔑 Using API key: $API_KEY"
@@ -162,7 +162,7 @@ else
     -H "Content-Type: application/json" \
     -d "{
       \"to\": \"$TEST_NUMBER\",
-      \"message\": \"🚀 TickTick test message $(date +'%H:%M:%S')\"
+      \"message\": \"🚀 TicTic test message $(date +'%H:%M:%S')\"
     }")
 
   if ! check_response "$MESSAGE_RESPONSE" "Message sending"; then
@@ -170,28 +170,6 @@ else
   else
     echo "$MESSAGE_RESPONSE" | print_json
   fi
-fi
-
-# 5. Configure Webhook (using webhook.site for testing)
-echo -e "\n🔗 Configuring webhook..."
-WEBHOOK_UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')  # macOS compatible UUID generation
-WEBHOOK_URL="https://webhook.site/$WEBHOOK_UUID"
-
-WEBHOOK_RESPONSE=$(curl -s -X POST $BASE_URL/v1/webhooks \
-  -H "X-API-Key: $API_KEY" \
-  -H "X-Tenant-Id: $TENANT_ID" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"url\": \"$WEBHOOK_URL\",
-    \"events\": [\"message\", \"message_ack\", \"connected\", \"disconnected\"],
-    \"secret\": \"test-secret-123\"
-  }")
-
-if ! check_response "$WEBHOOK_RESPONSE" "Webhook configuration"; then
-  echo -e "${YELLOW}Webhook configuration failed, but continuing${NC}"
-else
-  echo "$WEBHOOK_RESPONSE" | print_json
-  echo -e "${YELLOW}📨 Check your webhooks at: $WEBHOOK_URL${NC}"
 fi
 
 # 6. Final health check

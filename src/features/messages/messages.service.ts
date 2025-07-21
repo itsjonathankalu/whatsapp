@@ -10,19 +10,13 @@ export class MessagesService {
         tenantId: string,
         input: SendMessageInput
     ): Promise<MessageSent> {
-        // Check if client exists first
-        const existingInstance = clientManager.getClient(tenantId);
-        if (!existingInstance) {
-            throw new ServiceUnavailableError(
-                'No WhatsApp session found. Please initialize a session first.'
-            );
-        }
-
         try {
-            const instance = await clientManager.waitForReady(tenantId, 10000);
+            // Auto-initialize if needed
+            const instance = await clientManager.getOrCreateClient(tenantId);
 
+            // Wait for ready if still connecting
             if (!instance.isReady) {
-                throw new ServiceUnavailableError('WhatsApp session not connected');
+                await clientManager.waitForReady(tenantId, 30000);
             }
 
             const chatId = PhoneUtils.toWhatsAppId(input.to);

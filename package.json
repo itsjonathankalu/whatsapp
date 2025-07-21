@@ -1,5 +1,5 @@
 {
-    "name": "@ticktick/whatsapp",
+    "name": "@tictic/whatsapp",
     "version": "1.0.0",
     "description": "Production-ready WhatsApp API built with Fastify",
     "main": "dist/server.js",

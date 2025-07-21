@@ -13,9 +13,9 @@ async function start() {
             host: '0.0.0.0'
         });
 
-        logger.info(`TickTick WhatsApp API running on port ${config.port}`);
+        logger.info(`TicTic WhatsApp API running on port ${config.port}`);
     } catch (error) {
-        logger.error('Failed to start server', error);
+        logger.error('Failed to start server:', error);
         process.exit(1);
     }
 }

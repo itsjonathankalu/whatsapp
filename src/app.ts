@@ -10,7 +10,6 @@ import { UnauthorizedError } from '@shared/lib/errors';
 
 import { sessionsRoutes } from '@features/sessions';
 import { messagesRoutes } from '@features/messages';
-import { webhooksRoutes } from '@features/webhooks';
 import { healthRoutes } from '@features/health';
 
 export async function buildApp() {
@@ -55,8 +54,7 @@ export async function buildApp() {
             endpoints: {
                 health: "/health",
                 sessions: "/v1/sessions",
-                messages: "/v1/messages",
-                webhooks: "/v1/webhooks"
+                messages: "/v1/messages"
             },
             status: "operational"
         });
@@ -91,7 +89,6 @@ export async function buildApp() {
     await app.register(healthRoutes, { prefix: '/health' });
     await app.register(sessionsRoutes, { prefix: '/v1/sessions' });
     await app.register(messagesRoutes, { prefix: '/v1/messages' });
-    await app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
 
     return app;
 } 

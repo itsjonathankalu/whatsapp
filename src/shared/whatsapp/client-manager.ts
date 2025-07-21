@@ -15,16 +15,34 @@ export interface ClientInstance {
 
 export class WhatsAppClientManager extends EventEmitter {
     private clients = new Map<string, ClientInstance>();
+    private initializing = new Map<string, Promise<ClientInstance>>();
+
+    async getOrCreateClient(tenantId: string): Promise<ClientInstance> {
+        // Return existing client
+        const existing = this.clients.get(tenantId);
+        if (existing) return existing;
+
+        // Return in-progress initialization
+        const inProgress = this.initializing.get(tenantId);
+        if (inProgress) return inProgress;
+
+        // Start new initialization
+        const initPromise = this.createClient(tenantId);
+        this.initializing.set(tenantId, initPromise);
+
+        try {
+            const instance = await initPromise;
+            return instance;
+        } finally {
+            this.initializing.delete(tenantId);
+        }
+    }
 
     getClient(tenantId: string): ClientInstance | undefined {
         return this.clients.get(tenantId);
     }
 
-    async createClient(tenantId: string): Promise<ClientInstance> {
-        if (this.clients.has(tenantId)) {
-            throw new ConflictError('Client already exists for this tenant');
-        }
-
+    private async createClient(tenantId: string): Promise<ClientInstance> {
         const client = new Client({
             authStrategy: new LocalAuth({
                 clientId: tenantId,
@@ -47,7 +65,6 @@ export class WhatsAppClientManager extends EventEmitter {
         this.clients.set(tenantId, instance);
 
         await client.initialize();
-
         return instance;
     }
 
@@ -59,11 +76,19 @@ export class WhatsAppClientManager extends EventEmitter {
         });
 
         client.on('ready', () => {
-            logger.info(`WhatsApp client ready for tenant ${instance.tenantId}`);
+            logger.info(`✅ WhatsApp client ready for tenant ${instance.tenantId}`);
             instance.isReady = true;
             instance.connectedAt = new Date();
             instance.qrCode = undefined;
             this.emit('ready', { tenantId: instance.tenantId });
+        });
+
+        client.on('authenticated', () => {
+            logger.info(`🔐 Session authenticated for tenant ${instance.tenantId}`);
+        });
+
+        client.on('auth_failure', (message) => {
+            logger.warn(`⚠️  Auth failure for tenant ${instance.tenantId}: ${message}`);
         });
 
         client.on('disconnected', (reason) => {

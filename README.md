@@ -1,4 +1,4 @@
-# TickTick WhatsApp API v1
+# TicTic WhatsApp API v1
 
 A production-ready WhatsApp API built with Node.js, Fastify, and whatsapp-web.js. Clean architecture, TypeScript, and Brazilian phone support.
 
@@ -50,7 +50,7 @@ Content-Type: application/json
 
 {
   "to": "11999887766",
-  "message": "Hello from TickTick! ✓✓"
+  "message": "Hello from TicTic! ✓✓"
 }
 
 Response:
