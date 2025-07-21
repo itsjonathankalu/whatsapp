@@ -45,10 +45,27 @@ export async function buildApp() {
     // Global error handler
     await app.register(errorHandlerPlugin);
 
+    // Root route - API info
+    app.get('/', async (request, reply) => {
+        return reply.send({
+            name: "TicTic WhatsApp API",
+            version: "1.0.0",
+            message: "🚀 A API do WhatsApp que realmente funciona",
+            documentation: "https://docs.tictic.dev",
+            endpoints: {
+                health: "/health",
+                sessions: "/v1/sessions",
+                messages: "/v1/messages",
+                webhooks: "/v1/webhooks"
+            },
+            status: "operational"
+        });
+    });
+
     // Auth hook for API routes
     app.addHook('onRequest', async (request, reply) => {
-        // Skip auth for health check
-        if (request.url.startsWith('/health')) {
+        // Skip auth for health check and root route
+        if (request.url.startsWith('/health') || request.url === '/') {
             return;
         }
 
