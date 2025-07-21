@@ -28,7 +28,7 @@ All requests require:
 ### Initialize Session
 
 ```bash
-POST /api/v1/sessions
+POST /v1/sessions
 X-API-Key: your-api-key
 X-Tenant-Id: tenant-123
 
@@ -43,7 +43,7 @@ Response:
 ### Send Message
 
 ```bash
-POST /api/v1/messages/send
+POST /v1/messages/send
 X-API-Key: your-api-key
 X-Tenant-Id: tenant-123
 Content-Type: application/json
@@ -64,7 +64,7 @@ Response:
 ### Configure Webhook
 
 ```bash
-POST /api/v1/webhooks
+POST /v1/webhooks
 X-API-Key: your-api-key
 X-Tenant-Id: tenant-123
 Content-Type: application/json

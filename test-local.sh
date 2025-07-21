@@ -85,7 +85,7 @@ echo "$HEALTH_RESPONSE" | print_json
 
 # 2. Initialize Session
 echo -e "\n${YELLOW}📱 Initializing WhatsApp session...${NC}"
-SESSION_RESPONSE=$(curl -s -X POST $BASE_URL/api/v1/sessions \
+SESSION_RESPONSE=$(curl -s -X POST $BASE_URL/v1/sessions \
   -H "X-API-Key: $API_KEY" \
   -H "X-Tenant-Id: $TENANT_ID")
 
@@ -114,7 +114,7 @@ if echo "$SESSION_RESPONSE" | grep -q "qrCode"; then
   MAX_ATTEMPTS=30
   ATTEMPT=0
   while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    STATUS_RESPONSE=$(curl -s $BASE_URL/api/v1/sessions/status \
+    STATUS_RESPONSE=$(curl -s $BASE_URL/v1/sessions/status \
       -H "X-API-Key: $API_KEY" \
       -H "X-Tenant-Id: $TENANT_ID")
     
@@ -144,7 +144,7 @@ fi
 
 # 3. Check final session status before sending message
 echo -e "\n📊 Checking session status before sending message..."
-STATUS_RESPONSE=$(curl -s $BASE_URL/api/v1/sessions/status \
+STATUS_RESPONSE=$(curl -s $BASE_URL/v1/sessions/status \
   -H "X-API-Key: $API_KEY" \
   -H "X-Tenant-Id: $TENANT_ID")
 
@@ -156,7 +156,7 @@ if [ "$STATUS" != "connected" ]; then
 else
   # 4. Send Test Message
   echo -e "\n📤 Sending test message..."
-  MESSAGE_RESPONSE=$(curl -s -X POST $BASE_URL/api/v1/messages/send \
+  MESSAGE_RESPONSE=$(curl -s -X POST $BASE_URL/v1/messages/send \
     -H "X-API-Key: $API_KEY" \
     -H "X-Tenant-Id: $TENANT_ID" \
     -H "Content-Type: application/json" \
@@ -177,7 +177,7 @@ echo -e "\n🔗 Configuring webhook..."
 WEBHOOK_UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')  # macOS compatible UUID generation
 WEBHOOK_URL="https://webhook.site/$WEBHOOK_UUID"
 
-WEBHOOK_RESPONSE=$(curl -s -X POST $BASE_URL/api/v1/webhooks \
+WEBHOOK_RESPONSE=$(curl -s -X POST $BASE_URL/v1/webhooks \
   -H "X-API-Key: $API_KEY" \
   -H "X-Tenant-Id: $TENANT_ID" \
   -H "Content-Type: application/json" \

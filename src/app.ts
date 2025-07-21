@@ -72,9 +72,9 @@ export async function buildApp() {
 
     // Routes
     await app.register(healthRoutes, { prefix: '/health' });
-    await app.register(sessionsRoutes, { prefix: '/api/v1/sessions' });
-    await app.register(messagesRoutes, { prefix: '/api/v1/messages' });
-    await app.register(webhooksRoutes, { prefix: '/api/v1/webhooks' });
+    await app.register(sessionsRoutes, { prefix: '/v1/sessions' });
+    await app.register(messagesRoutes, { prefix: '/v1/messages' });
+    await app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
 
     return app;
 } 
