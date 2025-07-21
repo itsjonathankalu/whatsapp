@@ -1,5 +1,7 @@
 node_modules/
 dist/
 .wwebjs_auth/
+.wwebjs_cache/
+.vscode/
 .DS_Store
 .env
