@@ -1,11 +1,20 @@
 # Simplified WhatsApp Service
 
-A focused WhatsApp service that does one thing well: **managing WhatsApp connections and sending messages**.
+A focused WhatsApp service built with **modern JavaScript** that does one thing well: **managing WhatsApp connections and sending messages**.
+
+## 🚀 **Modern JavaScript Setup**
+
+- ✅ **ES Modules** - Modern import/export syntax
+- ✅ **ESLint** - Code quality and error catching
+- ✅ **Prettier** - Automatic code formatting
+- ✅ **Husky** - Pre-commit hooks for quality
+- ✅ **JSDoc** - Type annotations without TypeScript
+- ✅ **Node --watch** - Hot reloading in development
 
 ## What This Service Does
 
 - ✅ Manages WhatsApp client sessions
-- ✅ Sends text messages  
+- ✅ Sends text messages
 - ✅ Provides session status
 - ✅ QR code generation for authentication
 - ✅ Simple internal API for gateway integration
@@ -13,7 +22,7 @@ A focused WhatsApp service that does one thing well: **managing WhatsApp connect
 ## What It Doesn't Do
 
 - ❌ API authentication (gateway's job)
-- ❌ Rate limiting (gateway's job)  
+- ❌ Rate limiting (gateway's job)
 - ❌ User management (gateway's job)
 - ❌ Complex error handling
 - ❌ Database operations
@@ -24,7 +33,7 @@ A focused WhatsApp service that does one thing well: **managing WhatsApp connect
 ```
 Gateway (handles API concerns) → WhatsApp Service (just WhatsApp operations)
    - Authentication ✓                - Validate internal secret
-   - Rate limiting ✓                 - Manage WhatsApp clients  
+   - Rate limiting ✓                 - Manage WhatsApp clients
    - API keys ✓                      - Send messages
    - User validation ✓                - Report status
    - Error formatting ✓
@@ -35,7 +44,9 @@ Gateway (handles API concerns) → WhatsApp Service (just WhatsApp operations)
 All requests require `X-Internal-Secret` and `X-Tenant-Id` headers.
 
 ### POST /send
+
 Send a message to a phone number.
+
 ```json
 {
   "to": "5511999999999",
@@ -44,12 +55,15 @@ Send a message to a phone number.
 ```
 
 ### GET /status
+
 Get session status for the tenant specified in headers.
 
 ### POST /session
+
 Create/initialize a WhatsApp session for the tenant specified in headers.
 
 ### GET /health
+
 Service health check with active session count. (No tenant required)
 
 ## Environment Variables
@@ -59,59 +73,102 @@ INTERNAL_SECRET=your-super-secret-key-here
 PORT=3000  # optional, defaults to 3000
 ```
 
-## Quick Start
+## Development
 
-### Development
+### Quick Start
+
 ```bash
-npm run dev
+npm install          # Install dependencies + setup git hooks
+npm run dev         # Start with hot reload
+```
+
+### Code Quality
+
+```bash
+npm run lint        # Check for issues
+npm run lint:fix    # Fix auto-fixable issues
+npm run format      # Format code with Prettier
+npm run format:check # Check if code is formatted
 ```
 
 ### Production
+
 ```bash
-npm run build
-npm start
+npm start           # Run production server
 ```
 
 ### Docker
+
 ```bash
 docker-compose up -d
 ```
 
-## Benefits of This Approach
+## Code Quality Features
 
-1. **Dead simple** - ~100 lines of code total
-2. **Focused** - Only does WhatsApp, nothing else
-3. **Fast** - No framework overhead
-4. **Easy to debug** - Everything in two files
-5. **Stateless API** - State only in WhatsApp clients
-6. **Resource efficient** - Minimal memory footprint
+### 🔍 **ESLint Rules**
+
+- Catches unused variables
+- Enforces consistent equality (`===`)
+- Requires curly braces
+- Prefers `const` over `let`
+- Warns about awaiting in loops
+
+### 🎨 **Prettier Formatting**
+
+- Single quotes
+- Semicolons
+- 100 character line width
+- 2 space indentation
+- Trailing commas in ES5
+
+### 🪝 **Pre-commit Hooks**
+
+- Automatically runs ESLint + Prettier
+- Can't commit broken/unformatted code
+- Ensures team consistency
 
 ## File Structure
 
 ```
 whatsapp/
 ├── src/
-│   ├── server.ts           # Simple HTTP server with routing
-│   └── whatsapp-manager.ts # WhatsApp client management
-├── sessions/               # WhatsApp session storage
-├── package.json           # Minimal dependencies
-├── Dockerfile             # Simple single-stage build
-└── docker-compose.yml     # Basic service setup
+│   ├── server.js           # HTTP server with routing
+│   └── whatsapp-manager.js # WhatsApp client management
+├── .vscode/
+│   └── settings.json       # VSCode configuration
+├── .husky/
+│   └── pre-commit         # Git hooks
+├── sessions/              # WhatsApp session storage
+├── package.json          # Modern ES modules setup
+├── .eslintrc.json        # Code quality rules
+├── .prettierrc           # Formatting rules
+├── Dockerfile            # Simple container build
+└── docker-compose.yml    # Service orchestration
 ```
+
+## Benefits of This Approach
+
+1. **🧠 Dead Simple** - Pure JavaScript, no build step
+2. **⚡ Fast Development** - Hot reload, instant feedback
+3. **🔧 Professional Quality** - Linting + formatting built-in
+4. **👥 Team Ready** - Pre-commit hooks ensure consistency
+5. **📝 Self-Documenting** - JSDoc provides type hints
+6. **🐛 Bug Prevention** - ESLint catches issues early
+7. **💾 Minimal Dependencies** - Only one runtime dependency
 
 ## Gateway Integration Example
 
-```typescript
+```javascript
 // In your Cloudflare Worker or API Gateway
-async function sendWhatsAppMessage(to: string, message: string, tenantId: string) {
+async function sendWhatsAppMessage(to, message, tenantId) {
   const response = await fetch(`${WHATSAPP_SERVICE_URL}/send`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Internal-Secret': INTERNAL_SECRET,
-      'X-Tenant-Id': tenantId
+      'X-Tenant-Id': tenantId,
     },
-    body: JSON.stringify({ to, message })
+    body: JSON.stringify({ to, message }),
   });
 
   if (!response.ok) {
@@ -121,38 +178,47 @@ async function sendWhatsAppMessage(to: string, message: string, tenantId: string
   return response.json();
 }
 
-async function getWhatsAppStatus(tenantId: string) {
+async function getWhatsAppStatus(tenantId) {
   const response = await fetch(`${WHATSAPP_SERVICE_URL}/status`, {
     method: 'GET',
     headers: {
       'X-Internal-Secret': INTERNAL_SECRET,
-      'X-Tenant-Id': tenantId
-    }
+      'X-Tenant-Id': tenantId,
+    },
   });
 
   return response.json();
 }
 
-async function createWhatsAppSession(tenantId: string) {
+async function createWhatsAppSession(tenantId) {
   const response = await fetch(`${WHATSAPP_SERVICE_URL}/session`, {
     method: 'POST',
     headers: {
       'X-Internal-Secret': INTERNAL_SECRET,
-      'X-Tenant-Id': tenantId
-    }
+      'X-Tenant-Id': tenantId,
+    },
   });
 
   return response.json();
 }
 ```
 
+## Development Workflow
+
+1. **Write code** - VSCode formats on save
+2. **ESLint feedback** - See errors as you type
+3. **Commit changes** - Pre-commit hook runs automatically
+4. **All checks pass** - Code is formatted and linted
+5. **Clean history** - No formatting commits needed
+
 ## When to Add Complexity Back
 
 Only add features when you actually need them:
+
 - **Message queuing** - When you hit rate limits
-- **Bulk sending** - When users ask for it  
+- **Bulk sending** - When users ask for it
 - **Media support** - When text isn't enough
 - **Webhooks** - When you need delivery status
-- **Persistence** - When session loss becomes a problem
+- **TypeScript** - When team grows or types become critical
 
-This service can handle hundreds of concurrent sessions with minimal resources. It's not fancy, but it's rock solid and maintainable.
+This service gives you **90% of TypeScript benefits with 10% of the complexity**. Perfect for a focused internal service that needs to be maintainable and professional! 🚀

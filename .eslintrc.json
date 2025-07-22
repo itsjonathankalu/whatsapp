@@ -1,0 +1,41 @@
+{
+    "env": {
+        "node": true,
+        "es2021": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+    },
+    "ignorePatterns": [
+        "node_modules/",
+        "sessions/",
+        ".wwebjs_auth/"
+    ],
+    "rules": {
+        "no-unused-vars": [
+            "error",
+            {
+                "argsIgnorePattern": "^_"
+            }
+        ],
+        "no-console": "off",
+        "eqeqeq": [
+            "error",
+            "always"
+        ],
+        "curly": [
+            "error",
+            "all"
+        ],
+        "prefer-const": "error",
+        "no-var": "error",
+        "arrow-body-style": [
+            "error",
+            "as-needed"
+        ],
+        "prefer-arrow-callback": "error",
+        "no-await-in-loop": "warn"
+    }
+}

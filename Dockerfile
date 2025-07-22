@@ -5,13 +5,11 @@ RUN apk add --no-cache chromium
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
-COPY . .
+COPY src ./src
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-RUN npm run build
-
-CMD ["node", "dist/server.js"] 
+CMD ["node", "src/server.js"] 

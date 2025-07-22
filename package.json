@@ -2,19 +2,30 @@
     "name": "@tictic/whatsapp",
     "version": "1.0.0",
     "description": "Simplified WhatsApp service - just connections and messages",
-    "main": "dist/server.js",
+    "type": "module",
+    "main": "src/server.js",
     "scripts": {
-        "dev": "tsx watch src/server.ts",
-        "build": "npx tsc",
-        "start": "node dist/server.js",
-        "test": "echo \"No tests yet\" && exit 0"
+        "dev": "node --watch src/server.js",
+        "start": "node src/server.js",
+        "lint": "eslint src",
+        "lint:fix": "eslint src --fix",
+        "format": "prettier --write \"src/**/*.js\"",
+        "format:check": "prettier --check \"src/**/*.js\"",
+        "prepare": "husky install"
     },
     "dependencies": {
         "whatsapp-web.js": "^1.23.0"
     },
     "devDependencies": {
-        "@types/node": "^20.11.0",
-        "tsx": "^4.7.0",
-        "typescript": "^5.3.3"
+        "eslint": "^8.54.0",
+        "prettier": "^3.1.0",
+        "husky": "^8.0.3",
+        "lint-staged": "^15.1.0"
+    },
+    "lint-staged": {
+        "*.js": [
+            "eslint --fix",
+            "prettier --write"
+        ]
     }
 }
