@@ -1,16 +1,10 @@
 services:
-  whatsapp-api:
+  whatsapp:
     build: .
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - API_KEY=${API_KEY}
-      - PORT=3000
+      - INTERNAL_SECRET=${INTERNAL_SECRET:-your-secret-here}
     volumes:
-      - whatsapp_sessions:/app/.wwebjs_auth
+      - ./sessions:/app/.wwebjs_auth
     restart: unless-stopped
-
-volumes:
-  whatsapp_sessions:
-    driver: local

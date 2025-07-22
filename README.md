@@ -1,170 +1,158 @@
-# TicTic WhatsApp API v1
+# Simplified WhatsApp Service
 
-A production-ready WhatsApp API built with Node.js, Fastify, and whatsapp-web.js. Clean architecture, TypeScript, and Brazilian phone support.
+A focused WhatsApp service that does one thing well: **managing WhatsApp connections and sending messages**.
 
-## 🚀 Quick Start
+## What This Service Does
+
+- ✅ Manages WhatsApp client sessions
+- ✅ Sends text messages  
+- ✅ Provides session status
+- ✅ QR code generation for authentication
+- ✅ Simple internal API for gateway integration
+
+## What It Doesn't Do
+
+- ❌ API authentication (gateway's job)
+- ❌ Rate limiting (gateway's job)  
+- ❌ User management (gateway's job)
+- ❌ Complex error handling
+- ❌ Database operations
+- ❌ CORS, security headers, etc.
+
+## Architecture
+
+```
+Gateway (handles API concerns) → WhatsApp Service (just WhatsApp operations)
+   - Authentication ✓                - Validate internal secret
+   - Rate limiting ✓                 - Manage WhatsApp clients  
+   - API keys ✓                      - Send messages
+   - User validation ✓                - Report status
+   - Error formatting ✓
+```
+
+## API Endpoints
+
+All requests require `X-Internal-Secret` and `X-Tenant-Id` headers.
+
+### POST /send
+Send a message to a phone number.
+```json
+{
+  "to": "5511999999999",
+  "message": "Hello from TicTic!"
+}
+```
+
+### GET /status
+Get session status for the tenant specified in headers.
+
+### POST /session
+Create/initialize a WhatsApp session for the tenant specified in headers.
+
+### GET /health
+Service health check with active session count. (No tenant required)
+
+## Environment Variables
 
 ```bash
-# Install dependencies
-npm install
+INTERNAL_SECRET=your-super-secret-key-here
+PORT=3000  # optional, defaults to 3000
+```
 
-# Development
+## Quick Start
+
+### Development
+```bash
 npm run dev
+```
 
-# Production
+### Production
+```bash
 npm run build
 npm start
 ```
 
-## 📚 API Documentation
-
-### Authentication
-
-All requests require:
-
-- `X-API-Key`: Your API key
-- `X-Tenant-Id`: Your tenant identifier
-
-### Initialize Session
-
+### Docker
 ```bash
-POST /v1/sessions
-X-API-Key: your-api-key
-X-Tenant-Id: tenant-123
-
-Response:
-{
-  "sessionId": "tenant-123",
-  "status": "waiting_qr",
-  "qrCode": "data:image/png;base64,..."
-}
-```
-
-### Send Message
-
-```bash
-POST /v1/messages/send
-X-API-Key: your-api-key
-X-Tenant-Id: tenant-123
-Content-Type: application/json
-
-{
-  "to": "11999887766",
-  "message": "Hello from TicTic! ✓✓"
-}
-
-Response:
-{
-  "id": "3EB0B430E5...",
-  "timestamp": "2024-01-20T10:30:00Z",
-  "to": "5511999887766"
-}
-```
-
-### Configure Webhook
-
-```bash
-POST /v1/webhooks
-X-API-Key: your-api-key
-X-Tenant-Id: tenant-123
-Content-Type: application/json
-
-{
-  "url": "https://your-server.com/webhook",
-  "events": ["message", "message_ack"],
-  "secret": "your-webhook-secret"
-}
-
-Response:
-{
-  "id": "webhook-uuid",
-  "message": "Webhook created successfully"
-}
-```
-
-### Health Check
-
-```bash
-GET /health
-
-Response:
-{
-  "status": "healthy",
-  "timestamp": "2024-01-20T10:30:00Z",
-  "version": "1.0.0",
-  "uptime": 3600,
-  "clients": [
-    {
-      "tenantId": "tenant-123",
-      "connected": true
-    }
-  ]
-}
-```
-
-## 🏗️ Architecture
-
-### Feature-based Structure
-
-```
-src/
-├── features/      # Domain features
-├── shared/        # Shared utilities
-│   ├── lib/       # Core utilities
-│   ├── plugins/   # Fastify plugins
-│   └── whatsapp/  # WhatsApp client
-```
-
-### Key Design Decisions
-
-- **TypeScript**: Type safety and better DX
-- **Fastify**: High performance, built-in validation
-- **Feature folders**: Each feature is self-contained
-- **Multi-tenant**: Support multiple WhatsApp accounts
-- **Brazilian focus**: Proper phone formatting
-
-## 🐳 Docker Deployment
-
-```bash
-# Build and run
 docker-compose up -d
-
-# With custom API key
-API_KEY=your-secret-key docker-compose up -d
 ```
 
-## 🔒 Environment Variables
+## Benefits of This Approach
 
-```bash
-# Required
-API_KEY=your-secret-api-key
-NODE_ENV=production
+1. **Dead simple** - ~100 lines of code total
+2. **Focused** - Only does WhatsApp, nothing else
+3. **Fast** - No framework overhead
+4. **Easy to debug** - Everything in two files
+5. **Stateless API** - State only in WhatsApp clients
+6. **Resource efficient** - Minimal memory footprint
 
-# Optional
-PORT=3000
-LOG_LEVEL=info
-ENABLE_WEBHOOKS=true
-ENABLE_RATE_LIMIT=true
+## File Structure
+
+```
+whatsapp/
+├── src/
+│   ├── server.ts           # Simple HTTP server with routing
+│   └── whatsapp-manager.ts # WhatsApp client management
+├── sessions/               # WhatsApp session storage
+├── package.json           # Minimal dependencies
+├── Dockerfile             # Simple single-stage build
+└── docker-compose.yml     # Basic service setup
 ```
 
-## 📈 Production Checklist
+## Gateway Integration Example
 
-- [ ] Set strong API_KEY
-- [ ] Configure rate limiting
-- [ ] Set up monitoring
-- [ ] Configure webhooks
-- [ ] Test error handling
-- [ ] Set up backups
+```typescript
+// In your Cloudflare Worker or API Gateway
+async function sendWhatsAppMessage(to: string, message: string, tenantId: string) {
+  const response = await fetch(`${WHATSAPP_SERVICE_URL}/send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Secret': INTERNAL_SECRET,
+      'X-Tenant-Id': tenantId
+    },
+    body: JSON.stringify({ to, message })
+  });
 
-## 🤝 Contributing
+  if (!response.ok) {
+    throw new Error('WhatsApp service error');
+  }
 
-This is v1 - we focus on reliability over features. Before adding:
+  return response.json();
+}
 
-1. Ensure it's essential
-2. Write tests
-3. Update documentation
-4. Follow the patterns
+async function getWhatsAppStatus(tenantId: string) {
+  const response = await fetch(`${WHATSAPP_SERVICE_URL}/status`, {
+    method: 'GET',
+    headers: {
+      'X-Internal-Secret': INTERNAL_SECRET,
+      'X-Tenant-Id': tenantId
+    }
+  });
 
----
+  return response.json();
+}
 
-Built with ❤️ by Brazilian developers who understand WhatsApp is not just an app, it's infrastructure.
+async function createWhatsAppSession(tenantId: string) {
+  const response = await fetch(`${WHATSAPP_SERVICE_URL}/session`, {
+    method: 'POST',
+    headers: {
+      'X-Internal-Secret': INTERNAL_SECRET,
+      'X-Tenant-Id': tenantId
+    }
+  });
+
+  return response.json();
+}
+```
+
+## When to Add Complexity Back
+
+Only add features when you actually need them:
+- **Message queuing** - When you hit rate limits
+- **Bulk sending** - When users ask for it  
+- **Media support** - When text isn't enough
+- **Webhooks** - When you need delivery status
+- **Persistence** - When session loss becomes a problem
+
+This service can handle hundreds of concurrent sessions with minimal resources. It's not fancy, but it's rock solid and maintainable.
