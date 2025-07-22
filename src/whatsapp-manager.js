@@ -85,19 +85,13 @@ export class WhatsAppManager {
       throw new Error('Session not ready');
     }
 
-    // Format phone number for Brazil
-    let phone = to.replace(/\D/g, '');
-    if (!phone.startsWith('55')) {
-      phone = '55' + phone;
-    }
-
-    const chatId = phone + '@c.us';
+    const chatId = to + '@c.us';
     const result = await session.client.sendMessage(chatId, message);
 
     return {
       id: result.id._serialized,
       timestamp: new Date().toISOString(),
-      to: phone,
+      to: to,
     };
   }
 

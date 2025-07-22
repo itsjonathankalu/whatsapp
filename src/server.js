@@ -81,8 +81,8 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    // Route: POST /session
-    if (url.pathname === '/session' && req.method === 'POST') {
+    // Route: POST /sessions
+    if (url.pathname === '/sessions' && req.method === 'POST') {
       const session = await manager.createSession(tenantId);
       sendJson(res, 200, session);
       return;
