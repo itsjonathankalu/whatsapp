@@ -1,45 +1,17 @@
-# TicTic - WhatsApp HTTP Service
+# WhatsApp HTTP Service
 
-A simple HTTP service that sends WhatsApp messages. **One session, one purpose.**
+A simple HTTP service that sends WhatsApp messages. Built on [whatsapp-web.js](https://wwebjs.dev/).
 
-Built on top of [whatsapp-web.js](https://wwebjs.dev/) - an unofficial WhatsApp client library that connects through WhatsApp Web.
-
-⚠️ **This is for simple use cases.** Each instance uses ~512MB RAM (Chromium). Not designed for multiple sessions.
+⚠️ **Note:** Uses ~512MB RAM per session (Chromium). Plan accordingly.
 
 ## Features
 
 - 🚀 Send WhatsApp **text messages** via HTTP API
 - 📱 QR code authentication
+- 🔄 **Multiple sessions support** (session IDs required)
 - ⚡ Auto-reconnection
 - 🔒 Bearer token authentication
-
-## What This Supports
-
-**Currently implemented:**
-
-- ✅ Sending text messages only
-- ✅ Brazilian phone number formatting
-
-**Not implemented (yet):**
-
-- ❌ Media messages (images, documents, audio)
-- ❌ Group messages
-- ❌ Message reactions
-- ❌ Status updates
-- ❌ Contact sharing
-- ❌ Location sharing
-
-The underlying [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) library supports all these features. PRs welcome if you need them!
-
-## ⚠️ Disclaimer
-
-This service uses [whatsapp-web.js](https://wwebjs.dev/), which is:
-
-- **Unofficial** - Not affiliated with WhatsApp
-- **Uses WhatsApp Web** - Automates the web client with Puppeteer
-- **Risk of blocking** - WhatsApp doesn't allow unofficial clients
-
-Use at your own risk. This is not a replacement for the official WhatsApp Business API.
+- 💾 **Session persistence** via Docker volumes
 
 ## Quick Start
 
@@ -63,6 +35,96 @@ npm start
 docker-compose up
 ```
 
+## API Usage
+
+All endpoints require a session ID via the `X-Session-Id` header.
+
+### Basic Usage
+
+```bash
+# 1. Get QR Code (creates session)
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Session-Id: my-session" \
+  http://localhost:3000/qr
+
+# 2. Send Message (once session is ready)
+curl -X POST http://localhost:3000/send \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Session-Id: my-session" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "message": "Hello from WhatsApp HTTP!"
+  }'
+```
+
+### Multiple Sessions
+
+Manage different WhatsApp accounts with unique session IDs:
+
+```bash
+# Sales team WhatsApp
+curl -X POST http://localhost:3000/send \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Session-Id: sales" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "message": "Hello from Sales!"
+  }'
+
+# Support team WhatsApp
+curl -X POST http://localhost:3000/send \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Session-Id: support" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "message": "Hello from Support!"
+  }'
+```
+
+### Session Management
+
+```bash
+# Check session status
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Session-Id: sales" \
+  http://localhost:3000/status
+
+# Get QR for authentication
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Session-Id: sales" \
+  http://localhost:3000/qr
+```
+
+📖 **See [SESSION_USAGE.md](SESSION_USAGE.md) for complete documentation and examples.**
+
+### Health Check
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3000/health
+
+# Returns session overview:
+{
+  "status": "ok",
+  "sessions": {
+    "total": 2,
+    "ready": 1,
+    "waiting_qr": 1
+  },
+  "uptime": 3600
+}
+```
+
+## Session Requirements
+
+- **Session ID is mandatory** for all operations except `/health`
+- **Format**: Alphanumeric, hyphens, underscores only (max 50 chars)
+- **Examples**: `sales`, `support-team`, `client-123`
+- **Persistence**: Sessions survive container restarts via Docker volumes
+
 ## Configuration
 
 | Variable   | Description                          | Default    |
@@ -71,32 +133,25 @@ docker-compose up
 | PORT       | HTTP port                            | 3000       |
 | NODE_ENV   | Environment (development/production) | production |
 
-## API Usage
+## Docker Deployment
 
-### 1. Check QR Code
+```yaml
+# docker-compose.yml
+services:
+  whatsapp:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      - AUTH_TOKEN=${AUTH_TOKEN}
+    volumes:
+      - whatsapp-sessions:/app/.wwebjs_auth
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: '1.0'
 
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:3000/qr
-```
-
-### 2. Send Message
-
-```bash
-curl -X POST http://localhost:3000/send \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "5511999887766",
-    "message": "Hello from WhatsApp HTTP!"
-  }'
-```
-
-### 3. Health Check
-
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:3000/health
+volumes:
+  whatsapp-sessions:
 ```
 
 ## Dependencies
@@ -207,7 +262,7 @@ docker-compose up -d
 
 ```bash
 # Required: Strong secret for API authentication
-AUTH_TOKEN=your-super-secret-key-here
+AUTH_TOKEN=your-secret-token-here
 
 # Optional: Port for the service (defaults to 3000)
 PORT=3000

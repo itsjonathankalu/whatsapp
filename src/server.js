@@ -21,6 +21,21 @@ const validatePhone = (phone) => {
 const validateMessage = (message) =>
   message && typeof message === 'string' && message.length <= 4096;
 
+const validateSessionId = (sessionId) => {
+  if (!sessionId || typeof sessionId !== 'string') {
+    return false;
+  }
+  // Session ID should be alphanumeric, hyphens, underscores (reasonable identifier)
+  return /^[a-zA-Z0-9_-]+$/.test(sessionId) && sessionId.length <= 50;
+};
+
+/**
+ * Extract session ID from request headers - now mandatory
+ * @param {import('http').IncomingMessage} req
+ * @returns {string|null}
+ */
+const getSessionId = (req) => req.headers['x-session-id'] || null;
+
 /**
  * Parse JSON body from request
  * @param {import('http').IncomingMessage} req
@@ -69,17 +84,35 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   try {
-    // Health check
+    // Health check - no session ID required
     if (url.pathname === '/health' && req.method === 'GET') {
+      const activeSessions = manager.getActiveSessions();
       sendJson(res, 200, {
         status: 'ok',
-        ready: manager.isReady(),
+        sessions: activeSessions,
         uptime: process.uptime(),
       });
       return;
     }
 
-    // Send message - THE core endpoint
+    // All other endpoints require session ID
+    const sessionId = getSessionId(req);
+    if (!sessionId) {
+      sendJson(res, 400, {
+        error: 'Missing X-Session-Id header. Session ID is required for all operations.',
+      });
+      return;
+    }
+
+    if (!validateSessionId(sessionId)) {
+      sendJson(res, 400, {
+        error:
+          'Invalid session ID. Use alphanumeric characters, hyphens, and underscores only (max 50 chars).',
+      });
+      return;
+    }
+
+    // Send message
     if (url.pathname === '/send' && req.method === 'POST') {
       const body = await parseBody(req);
 
@@ -93,22 +126,29 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const result = await manager.sendMessage(body.to, body.message);
+      const result = await manager.sendMessage(sessionId, body.to, body.message);
       sendJson(res, 200, result);
       return;
     }
 
     // Get QR code for setup
     if (url.pathname === '/qr' && req.method === 'GET') {
-      const qr = await manager.getQR();
+      const qr = await manager.getQR(sessionId);
       sendJson(res, 200, qr);
+      return;
+    }
+
+    // Get session status
+    if (url.pathname === '/status' && req.method === 'GET') {
+      const status = manager.getStatus(sessionId);
+      sendJson(res, 200, status);
       return;
     }
 
     sendJson(res, 404, { error: 'Not found' });
   } catch (error) {
     console.error('Error:', error);
-    sendJson(res, 500, { error: 'Internal server error' });
+    sendJson(res, 500, { error: error.message || 'Internal server error' });
   }
 });
 
@@ -136,4 +176,5 @@ manager.startCleanupInterval();
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`WhatsApp HTTP service running on :${PORT}`);
+  console.log('Session ID required via X-Session-Id header for all operations');
 });

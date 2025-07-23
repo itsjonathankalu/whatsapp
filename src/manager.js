@@ -2,117 +2,250 @@ import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
 
 /**
- * @typedef {Object} WhatsAppStatus
- * @property {'disconnected' | 'waiting_qr' | 'ready'} status - Connection status
- * @property {string} [qr] - QR code for authentication
- * @property {string} [message] - Status message
+ * @typedef {Object} WhatsAppSession
+ * @property {Client} client - WhatsApp client instance
+ * @property {'initializing' | 'waiting_qr' | 'ready' | 'failed'} status - Session status
+ * @property {string} [qrCode] - QR code for authentication
+ * @property {Date} [connectedAt] - When the session connected
+ * @property {number} messageCount - Messages sent this minute
+ * @property {number} resetAt - When to reset message count
  */
 
 export class WhatsAppManager {
   constructor() {
-    this.client = null;
-    this.status = 'disconnected';
-    this.qrCode = null;
-    this.messageCount = 0;
-    this.resetAt = Date.now() + 60000;
-
-    this.initializeClient();
+    /** @type {Map<string, WhatsAppSession>} */
+    this.sessions = new Map();
   }
 
   /**
-   * Initialize WhatsApp client
+   * Create or get a WhatsApp session
+   * Sessions are lazy-loaded and persisted via Docker volumes
+   * @param {string} sessionId - Session identifier
+   * @returns {Promise<Object>} Session status
    */
-  initializeClient() {
-    this.client = new Client({
-      authStrategy: new LocalAuth(),
+  async createSession(sessionId) {
+    // Return existing if available
+    if (this.sessions.has(sessionId)) {
+      return this.getStatus(sessionId);
+    }
+
+    console.log(`Creating new session: ${sessionId}`);
+
+    const client = new Client({
+      authStrategy: new LocalAuth({ clientId: sessionId }),
       puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
     });
 
-    this.client.on('qr', (qr) => {
-      this.qrCode = qr;
-      this.status = 'waiting_qr';
-      console.log('QR Code received - scan with WhatsApp');
+    /** @type {WhatsAppSession} */
+    const session = {
+      client,
+      status: 'initializing',
+      messageCount: 0,
+      resetAt: Date.now() + 60000,
+    };
+
+    this.sessions.set(sessionId, session);
+
+    // Handle QR code generation
+    client.on('qr', (qr) => {
+      session.qrCode = qr;
+      session.status = 'waiting_qr';
+      console.log(`QR Code received for session: ${sessionId}`);
     });
 
-    this.client.on('ready', () => {
-      this.status = 'ready';
-      this.qrCode = null;
-      console.log('✓ WhatsApp client ready');
+    // Handle successful connection
+    client.on('ready', () => {
+      session.status = 'ready';
+      session.connectedAt = new Date();
+      session.qrCode = undefined;
+      console.log(`✓ Session ready: ${sessionId}`);
     });
 
-    this.client.on('auth_failure', () => {
-      this.status = 'disconnected';
-      console.log('✗ Authentication failed');
+    // Handle authentication failure
+    client.on('auth_failure', () => {
+      session.status = 'failed';
+      console.log(`✗ Authentication failed: ${sessionId}`);
+      // Keep the session around so user can retry/get new QR
     });
 
-    this.client.on('disconnected', (reason) => {
-      this.status = 'disconnected';
-      console.log(`✗ Disconnected: ${reason}`);
+    // Handle disconnection
+    client.on('disconnected', (reason) => {
+      session.status = 'initializing';
+      console.log(`✗ Session disconnected: ${sessionId} - ${reason}`);
       // Auto-reconnect after 5 seconds
-      setTimeout(() => this.initializeClient(), 5000);
+      setTimeout(() => {
+        if (this.sessions.has(sessionId)) {
+          console.log(`Attempting to reconnect session: ${sessionId}`);
+          this.createSession(sessionId);
+        }
+      }, 5000);
     });
 
-    this.client.initialize();
-  }
+    // Initialize the client
+    try {
+      await client.initialize();
+    } catch (error) {
+      console.error(`Failed to initialize session ${sessionId}:`, error);
+      session.status = 'failed';
+      throw error;
+    }
 
-  /**
-   * Check if WhatsApp client is ready
-   * @returns {boolean}
-   */
-  isReady() {
-    return this.status === 'ready';
+    // Wait a bit for QR code generation or auto-recovery
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    return this.getStatus(sessionId);
   }
 
   /**
    * Simple message counter for logging (rate limiting should be done at gateway level)
+   * @param {WhatsAppSession} session - Session to increment count for
    */
-  incrementMessageCount() {
+  incrementMessageCount(session) {
     const now = Date.now();
-    if (now > this.resetAt) {
-      this.messageCount = 0;
-      this.resetAt = now + 60000; // Reset every minute
+    if (now > session.resetAt) {
+      session.messageCount = 0;
+      session.resetAt = now + 60000; // Reset every minute
     }
 
-    this.messageCount++;
+    session.messageCount++;
   }
 
   /**
    * Send a WhatsApp message
+   * @param {string} sessionId - Session identifier
    * @param {string} to - Phone number to send to
    * @param {string} message - Message content
    * @returns {Promise<Object>} Send result
    */
-  async sendMessage(to, message) {
-    if (!this.isReady()) {
-      throw new Error('WhatsApp not connected. Check /qr endpoint.');
+  async sendMessage(sessionId, to, message) {
+    let session = this.sessions.get(sessionId);
+
+    // Create session if it doesn't exist
+    if (!session) {
+      await this.createSession(sessionId);
+      session = this.sessions.get(sessionId);
     }
 
-    this.incrementMessageCount();
+    if (session.status !== 'ready') {
+      throw new Error(
+        `Session '${sessionId}' not ready. Status: ${session.status}. Please check QR code endpoint.`
+      );
+    }
+
+    this.incrementMessageCount(session);
 
     const formattedNumber = this.formatPhoneForWhatsApp(to);
     const chatId = formattedNumber + '@c.us';
-    const result = await this.client.sendMessage(chatId, message);
+
+    try {
+      const result = await session.client.sendMessage(chatId, message);
+
+      return {
+        id: result.id._serialized,
+        timestamp: new Date().toISOString(),
+        to: formattedNumber,
+        sessionId: sessionId,
+      };
+    } catch (error) {
+      console.error(`Failed to send message via session ${sessionId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get QR code for session
+   * @param {string} sessionId - Session identifier
+   * @returns {Promise<Object>} QR code and status
+   */
+  async getQR(sessionId) {
+    const session = this.sessions.get(sessionId);
+
+    // Create session if it doesn't exist
+    if (!session) {
+      return this.createSession(sessionId);
+    }
 
     return {
-      id: result.id._serialized,
-      timestamp: new Date().toISOString(),
-      to: formattedNumber,
+      sessionId: sessionId,
+      status: session.status,
+      qr: session.qrCode,
+      message: this.getStatusMessage(session.status, session.qrCode),
+      connectedAt: session.connectedAt,
     };
   }
 
   /**
-   * Get QR code and status
-   * @returns {Promise<WhatsAppStatus>}
+   * Get user-friendly status message
+   * @param {string} status - Session status
+   * @param {string} qrCode - QR code if available
+   * @returns {string} User-friendly message
    */
-  async getQR() {
+  getStatusMessage(status, qrCode) {
+    switch (status) {
+      case 'waiting_qr':
+        return qrCode ? 'Scan this QR code with WhatsApp' : 'Generating QR code...';
+      case 'ready':
+        return 'Connected and ready to send messages';
+      case 'initializing':
+        return 'Starting up, please wait...';
+      case 'failed':
+        return 'Authentication failed. Request QR code to retry.';
+      default:
+        return `Status: ${status}`;
+    }
+  }
+
+  /**
+   * Get session status
+   * @param {string} sessionId - Session identifier
+   * @returns {Object} Status object
+   */
+  getStatus(sessionId) {
+    const session = this.sessions.get(sessionId);
+
+    if (!session) {
+      return {
+        sessionId: sessionId,
+        status: 'not_found',
+        message: 'Session does not exist. Request QR code to create.',
+      };
+    }
+
     return {
-      status: this.status,
-      qr: this.qrCode,
-      message:
-        this.status === 'waiting_qr' ? 'Scan this QR code with WhatsApp' : `Status: ${this.status}`,
+      sessionId: sessionId,
+      status: session.status,
+      qrCode: session.qrCode,
+      message: this.getStatusMessage(session.status, session.qrCode),
+      connectedAt: session.connectedAt,
+      messageCount: session.messageCount,
+    };
+  }
+
+  /**
+   * Check if a specific session is ready
+   * @param {string} sessionId - Session identifier
+   * @returns {boolean}
+   */
+  isReady(sessionId = 'default') {
+    const session = this.sessions.get(sessionId);
+    return session && session.status === 'ready';
+  }
+
+  /**
+   * Get count of active sessions
+   * @returns {Object} Number of sessions by status
+   */
+  getActiveSessions() {
+    const sessions = Array.from(this.sessions.values());
+    return {
+      total: sessions.length,
+      ready: sessions.filter((s) => s.status === 'ready').length,
+      waiting_qr: sessions.filter((s) => s.status === 'waiting_qr').length,
+      initializing: sessions.filter((s) => s.status === 'initializing').length,
+      failed: sessions.filter((s) => s.status === 'failed').length,
     };
   }
 
@@ -151,25 +284,37 @@ export class WhatsAppManager {
   startCleanupInterval() {
     // Log status every 5 minutes
     setInterval(() => {
-      console.log(`Status: ${this.status}, Messages sent this minute: ${this.messageCount}`);
+      const activeSessions = this.getActiveSessions();
+      console.log(`Sessions status:`, activeSessions);
+
+      // Log individual session details
+      for (const [sessionId, session] of this.sessions.entries()) {
+        console.log(
+          `  ${sessionId}: ${session.status}, messages this minute: ${session.messageCount}`
+        );
+      }
     }, 300000);
   }
 
   /**
-   * Shutdown WhatsApp client gracefully
+   * Shutdown all WhatsApp clients gracefully
    * @returns {Promise<void>}
    */
   async shutdown() {
-    console.log('Shutting down WhatsApp client...');
+    console.log('Shutting down all WhatsApp clients...');
 
-    try {
-      if (this.client) {
-        await this.client.destroy();
+    const promises = Array.from(this.sessions.entries()).map(async ([sessionId, session]) => {
+      try {
+        await session.client.destroy();
+        console.log(`✓ Session ${sessionId} shut down`);
+      } catch (error) {
+        console.error(`Error destroying client for session ${sessionId}:`, error);
       }
-    } catch (error) {
-      console.error('Error destroying client:', error);
-    }
+    });
 
-    console.log('WhatsApp client shut down');
+    await Promise.all(promises);
+    this.sessions.clear();
+
+    console.log('All WhatsApp clients shut down');
   }
 }
