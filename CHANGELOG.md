@@ -1,0 +1,19 @@
+# 1.0.0 (2025-07-23)
+
+
+### Bug Fixes
+
+* update API endpoint prefixes in README, test-local.sh, and app.ts ([14f6b3b](https://github.com/tictic-dev/whatsapp/commit/14f6b3befd571a2766c11e83b703d432153dadf4))
+* update Brazilian phone number formatting for WhatsApp compatibility by removing the 9th digit ([34491e5](https://github.com/tictic-dev/whatsapp/commit/34491e5549b3e4c64bac9b247d9dde46d178e28b))
+
+
+### Features
+
+* add .env.example file for environment variable configuration and update session route from /session to /sessions ([143c7cd](https://github.com/tictic-dev/whatsapp/commit/143c7cd971aae6d39d0531ef391db33e5ab79562))
+* add Caddy labels for reverse proxy configuration in docker-compose ([977e232](https://github.com/tictic-dev/whatsapp/commit/977e23246ee4558428c4cdb1c49b54bcb0cc8bec))
+* add CONTRIBUTING.md, SECURITY.md, and LICENSE files; update README for clarity and structure ([f8ff2d5](https://github.com/tictic-dev/whatsapp/commit/f8ff2d581f0c73ae3e1bbcb125e4dbba56d7e7ba))
+* add load and reliability testing scripts, enhance API authentication ([cb6d210](https://github.com/tictic-dev/whatsapp/commit/cb6d2104a95ff5bc502bbe64b0b84ce7d2da9c01))
+* add QR code display functionality to test-local.sh ([4ec56b9](https://github.com/tictic-dev/whatsapp/commit/4ec56b9b774d598c34784c1b31185d94071377a3))
+* add root route for API information and update auth hook to skip root route ([3c3fd0b](https://github.com/tictic-dev/whatsapp/commit/3c3fd0bfecb9861fc853070074a72a7d78f24d5e))
+* enhance session management in WhatsApp service; update README and add SESSION_USAGE.md for detailed session handling instructions ([25da677](https://github.com/tictic-dev/whatsapp/commit/25da677976d071875b58bb5a45941a4659a0ae6b))
+* implement phone number formatting for WhatsApp compatibility, including handling Brazilian numbers ([ef8de5e](https://github.com/tictic-dev/whatsapp/commit/ef8de5ea7ddec3b46554d264d89f9927d648ddb6))
