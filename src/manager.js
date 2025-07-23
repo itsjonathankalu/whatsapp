@@ -261,12 +261,12 @@ export class WhatsAppManager {
 
     // Handle Brazilian cellphone numbers (country code 55)
     if (cleaned.startsWith('55') && cleaned.length === 13) {
-      // Format: 5541996749101 -> 554196749101
-      // 55 (country) + 41 (area) + 9 (extra digit) + 96749101 (number)
+      // Format: 5541988887777 -> 554188887777
+      // 55 (country) + 41 (area) + 9 (extra digit) + 88887777 (number)
       const countryCode = cleaned.substring(0, 2); // 55
       const areaCode = cleaned.substring(2, 4); // 41
       const extraDigit = cleaned.substring(4, 5); // 9
-      const number = cleaned.substring(5); // 96749101
+      const number = cleaned.substring(5); // 88887777
 
       // Only remove the 9th digit if it's actually a 9
       if (extraDigit === '9') {
