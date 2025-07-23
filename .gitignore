@@ -1,6 +1,6 @@
 node_modules/
 dist/
-sessions/
+whatsapp-sessions/
 .wwebjs_auth/
 .wwebjs_cache/
 .vscode/
