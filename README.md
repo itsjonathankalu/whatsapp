@@ -2,8 +2,6 @@
 
 Um serviço HTTP simples que envia mensagens WhatsApp. Construído sobre [whatsapp-web.js](https://wwebjs.dev/).
 
-⚠️ **Nota:** Usa ~512MB RAM por sessão (Chromium). Planeje adequadamente.
-
 ## Recursos
 
 - 🚀 Envie **mensagens de texto** WhatsApp via HTTP API
@@ -459,8 +457,6 @@ Licença MIT - veja arquivo [LICENSE](LICENSE).
 ### TicTic ✓✓ - WhatsApp HTTP Service
 
 A simple HTTP service that sends WhatsApp messages. Built on [whatsapp-web.js](https://wwebjs.dev/).
-
-⚠️ **Note:** Uses ~512MB RAM per session (Chromium). Plan accordingly.
 
 ### Features
 
