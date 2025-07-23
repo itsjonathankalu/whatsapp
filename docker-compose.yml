@@ -4,7 +4,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - INTERNAL_SECRET=${INTERNAL_SECRET:-your-secret-here}
+      - AUTH_TOKEN=${AUTH_TOKEN:-your-secret-token-here}
+      - PORT=${PORT:-3000}
+      - NODE_ENV=${NODE_ENV:-production}
     volumes:
-      - ./sessions:/app/.wwebjs_auth
+      - whatsapp-sessions:/app/.wwebjs_auth
     restart: unless-stopped
+    mem_limit: 1g
+    cpus: '1.0'
+
+volumes:
+  whatsapp-sessions:

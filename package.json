@@ -1,7 +1,15 @@
 {
     "name": "@tictic/whatsapp",
     "version": "1.0.0",
-    "description": "Simplified WhatsApp service - just connections and messages",
+    "description": "Simple HTTP service for WhatsApp. Built on whatsapp-web.js.",
+    "keywords": [
+        "whatsapp",
+        "whatsapp-web.js",
+        "http",
+        "api",
+        "messaging",
+        "text"
+    ],
     "type": "module",
     "main": "src/server.js",
     "scripts": {
@@ -27,5 +35,16 @@
             "eslint --fix",
             "prettier --write"
         ]
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tictic-dev/whatsapp.git"
+    },
+    "bugs": {
+        "url": "https://github.com/tictic-dev/whatsapp/issues"
+    },
+    "homepage": "https://github.com/tictic-dev/whatsapp#readme",
+    "engines": {
+        "node": ">=18.0.0"
     }
 }

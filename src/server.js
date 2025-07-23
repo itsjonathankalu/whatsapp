@@ -1,13 +1,25 @@
 import { createServer } from 'http';
-import { WhatsAppManager } from './whatsapp-manager.js';
+import { WhatsAppManager } from './manager.js';
 
 const manager = new WhatsAppManager();
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
+const AUTH_TOKEN = process.env.AUTH_TOKEN;
 
-if (!INTERNAL_SECRET) {
-  console.error('INTERNAL_SECRET environment variable is required');
+if (!AUTH_TOKEN) {
+  console.error('AUTH_TOKEN environment variable is required');
   process.exit(1);
 }
+
+// Add validation functions
+const validatePhone = (phone) => {
+  if (!phone || typeof phone !== 'string') {
+    return false;
+  }
+  const cleaned = phone.replace(/\D/g, '');
+  return cleaned.length >= 8 && cleaned.length <= 15;
+};
+
+const validateMessage = (message) =>
+  message && typeof message === 'string' && message.length <= 4096;
 
 /**
  * Parse JSON body from request
@@ -41,61 +53,62 @@ const sendJson = (res, statusCode, data) => {
 };
 
 const server = createServer(async (req, res) => {
-  // Validate internal secret
-  if (req.headers['x-internal-secret'] !== INTERNAL_SECRET) {
-    sendJson(res, 401, { error: 'Unauthorized' });
+  // Simple auth check
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    sendJson(res, 401, { error: 'Missing authorization header' });
+    return;
+  }
+
+  const token = authHeader.substring(7);
+  if (token !== AUTH_TOKEN) {
+    sendJson(res, 401, { error: 'Invalid token' });
     return;
   }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   try {
-    // Health check (no tenant required)
+    // Health check
     if (url.pathname === '/health' && req.method === 'GET') {
       sendJson(res, 200, {
         status: 'ok',
-        sessions: manager.getActiveSessions(),
+        ready: manager.isReady(),
+        uptime: process.uptime(),
       });
       return;
     }
 
-    // All other endpoints require tenant ID
-    const tenantId = req.headers['x-tenant-id'];
-    if (!tenantId) {
-      sendJson(res, 400, { error: 'Tenant ID required' });
-      return;
-    }
-
-    // Route: POST /send
+    // Send message - THE core endpoint
     if (url.pathname === '/send' && req.method === 'POST') {
       const body = await parseBody(req);
-      const result = await manager.sendMessage(tenantId, body.to, body.message);
+
+      if (!validatePhone(body.to)) {
+        sendJson(res, 400, { error: 'Invalid phone number' });
+        return;
+      }
+
+      if (!validateMessage(body.message)) {
+        sendJson(res, 400, { error: 'Invalid message (max 4096 chars)' });
+        return;
+      }
+
+      const result = await manager.sendMessage(body.to, body.message);
       sendJson(res, 200, result);
       return;
     }
 
-    // Route: GET /status
-    if (url.pathname === '/status' && req.method === 'GET') {
-      const status = await manager.getStatus(tenantId);
-      sendJson(res, 200, status);
+    // Get QR code for setup
+    if (url.pathname === '/qr' && req.method === 'GET') {
+      const qr = await manager.getQR();
+      sendJson(res, 200, qr);
       return;
     }
 
-    // Route: POST /sessions
-    if (url.pathname === '/sessions' && req.method === 'POST') {
-      const session = await manager.createSession(tenantId);
-      sendJson(res, 200, session);
-      return;
-    }
-
-    // 404
     sendJson(res, 404, { error: 'Not found' });
   } catch (error) {
     console.error('Error:', error);
-    sendJson(res, 500, {
-      error: 'Internal error',
-      message: error.message,
-    });
+    sendJson(res, 500, { error: 'Internal server error' });
   }
 });
 
@@ -117,7 +130,10 @@ const gracefulShutdown = async (signal) => {
   process.on(signal, () => gracefulShutdown(signal));
 });
 
+// Start cleanup interval
+manager.startCleanupInterval();
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`WhatsApp service running on :${PORT}`);
+  console.log(`WhatsApp HTTP service running on :${PORT}`);
 });
