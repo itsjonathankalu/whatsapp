@@ -17,8 +17,12 @@ router.use(validateRequest);
 // ===== SESSION ROUTES =====
 
 // Create new session
-router.post('/sessions', async (_, res) => {
-  const sessionId = randomUUID();
+router.post('/sessions', async (req, res) => {
+  let { sessionId } = req.body;
+  if (!sessionId) {
+    sessionId = randomUUID();
+  }
+
   try {
     const result = await sessionManager.createSession(sessionId);
     res.status(201).json(result);
