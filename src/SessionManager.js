@@ -62,7 +62,7 @@ export class SessionManager extends EventEmitter {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
-      qrMaxRetries: 0, // Important: No auto-refresh for HTTP
+      qrMaxRetries: 1, // Important: Only 1 attempt after 60s
     });
 
     session.client = client;
