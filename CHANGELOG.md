@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/tictic-dev/whatsapp/compare/v1.0.0...v1.1.0) (2025-07-24)
+
+
+### Features
+
+* update Dockerfile and package.json for improved structure and dependencies; add session management features and middleware ([213150d](https://github.com/tictic-dev/whatsapp/commit/213150d89c7afbcdf3f9b0d2ae3b278f0183da88))
+
 # 1.0.0 (2025-07-23)
 
 

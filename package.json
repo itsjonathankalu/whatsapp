@@ -1,6 +1,6 @@
 {
     "name": "@tictic/whatsapp",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Simple HTTP service for WhatsApp. Built on whatsapp-web.js.",
     "keywords": [
         "whatsapp",
