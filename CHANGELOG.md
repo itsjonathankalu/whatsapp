@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/tictic-dev/whatsapp/compare/v1.1.2...v1.1.3) (2025-07-24)
+
+
+### Bug Fixes
+
+* update qrMaxRetries in SessionManager for improved session handling ([06010bb](https://github.com/tictic-dev/whatsapp/commit/06010bb686a611765ba8ee7912fca573b1cbff69))
+
 ## [1.1.2](https://github.com/tictic-dev/whatsapp/compare/v1.1.1...v1.1.2) (2025-07-24)
 
 
