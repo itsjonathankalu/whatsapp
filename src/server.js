@@ -1,5 +1,6 @@
 // server.js - Enhanced WhatsApp HTTP Service with proper QR handling
 import { createServer } from 'http';
+import { randomUUID } from 'crypto';
 import { SessionManager } from './SessionManager.js';
 import { Router } from '../lib/Router.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -16,16 +17,8 @@ router.use(validateRequest);
 // ===== SESSION ROUTES =====
 
 // Create new session
-router.post('/sessions', async (req, res) => {
-  const { sessionId } = req.body;
-
-  if (!sessionId) {
-    return res.status(400).json({
-      error: 'Session ID required',
-      help: 'Provide a unique sessionId in request body',
-    });
-  }
-
+router.post('/sessions', async (_, res) => {
+  const sessionId = randomUUID();
   try {
     const result = await sessionManager.createSession(sessionId);
     res.status(201).json(result);

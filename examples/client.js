@@ -38,8 +38,8 @@ class WhatsAppClient {
   }
 
   // Session methods
-  async createSession(sessionId) {
-    return this.request('POST', '/sessions', { sessionId });
+  async createSession() {
+    return this.request('POST', '/sessions', {});
   }
 
   async getSession(sessionId) {
@@ -74,13 +74,15 @@ async function main() {
   const client = new WhatsAppClient(API_URL, API_TOKEN);
 
   try {
-    // 1. Create session
+    // 1. Create session with auto-generated ID
     console.log('Creating session...');
-    await client.createSession('my-business');
+    const sessionResult = await client.createSession();
+    const sessionId = sessionResult.sessionId;
+    console.log(`Using session: ${sessionId}`);
 
     // 2. Get QR code
     console.log('Getting QR code...');
-    const qr = await client.getQR('my-business');
+    const qr = await client.getQR(sessionId);
 
     if (qr.status === 'qr') {
       console.log('Scan this QR code:');
@@ -103,7 +105,7 @@ async function main() {
     while (!authenticated) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
-      const status = await client.getSession('my-business');
+      const status = await client.getSession(sessionId);
       if (status.status === 'ready') {
         authenticated = true;
         console.log('Authenticated!', status.info);
@@ -112,7 +114,7 @@ async function main() {
 
     // 4. Send message
     console.log('Sending message...');
-    const result = await client.sendMessage('my-business', '5511999887766', 'Hello from TicTic!');
+    const result = await client.sendMessage(sessionId, '5511999887766', 'Hello from TicTic!');
     console.log('Message sent:', result);
   } catch (error) {
     console.error('Error:', error.message);

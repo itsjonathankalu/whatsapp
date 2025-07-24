@@ -33,8 +33,7 @@ docker-compose logs -f whatsapp
 ```bash
 curl -X POST http://localhost:3000/sessions \
   -H "Authorization: Bearer SEU_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId": "minha-sessao"}'
+  -H "Content-Type: application/json"
 ```
 
 ### 2. Obter QR Code
@@ -174,10 +173,17 @@ docker-compose logs -f whatsapp
 #### 1. Create Session
 
 ```bash
+# With specific ID
 curl -X POST http://localhost:3000/sessions \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"sessionId": "my-session"}'
+
+# Or leave empty to auto-generate UUID
+curl -X POST http://localhost:3000/sessions \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
 ```
 
 #### 2. Get QR Code
