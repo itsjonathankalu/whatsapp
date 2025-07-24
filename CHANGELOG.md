@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/tictic-dev/whatsapp/compare/v1.3.0...v1.3.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* add MacOS support for Puppeteer executable path ([4c3599b](https://github.com/tictic-dev/whatsapp/commit/4c3599b321dc02ee53eebfdf41f3cd3f84a85e4c))
+
 # [1.3.0](https://github.com/tictic-dev/whatsapp/compare/v1.2.0...v1.3.0) (2025-07-24)
 
 
