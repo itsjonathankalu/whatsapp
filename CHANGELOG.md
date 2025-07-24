@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/tictic-dev/whatsapp/compare/v1.1.1...v1.1.2) (2025-07-24)
+
+
+### Bug Fixes
+
+* enhance session creation logic to allow for optional session ID ([2f3712c](https://github.com/tictic-dev/whatsapp/commit/2f3712c9c448d1b78008365d69bfc91a64fb8ecd))
+
 ## [1.1.1](https://github.com/tictic-dev/whatsapp/compare/v1.1.0...v1.1.1) (2025-07-24)
 
 
