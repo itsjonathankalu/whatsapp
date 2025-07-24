@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/tictic-dev/whatsapp/compare/v1.1.0...v1.1.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* simplify session creation and update README for clearer usage instructions ([d059f4f](https://github.com/tictic-dev/whatsapp/commit/d059f4f893c7eadedf0e7468621abfec2bce2c83))
+
 # [1.1.0](https://github.com/tictic-dev/whatsapp/compare/v1.0.0...v1.1.0) (2025-07-24)
 
 
