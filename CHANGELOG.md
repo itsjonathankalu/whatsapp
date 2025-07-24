@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/tictic-dev/whatsapp/compare/v1.1.3...v1.2.0) (2025-07-24)
+
+
+### Features
+
+* enhance session management with disk persistence ([3bc712a](https://github.com/tictic-dev/whatsapp/commit/3bc712a0f57618cb9a46258e49dd307022f7701b))
+
 ## [1.1.3](https://github.com/tictic-dev/whatsapp/compare/v1.1.2...v1.1.3) (2025-07-24)
 
 
