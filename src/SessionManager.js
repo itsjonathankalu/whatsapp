@@ -156,6 +156,22 @@ export class SessionManager extends EventEmitter {
       throw new Error('Session not found');
     }
 
+    // Restart if disconnected (QR expired)
+    if (session.status === 'disconnected') {
+      console.log(`Restarting disconnected session ${sessionId}`);
+
+      // Clean up old session
+      if (session.client) {
+        await session.client.destroy().catch(() => {});
+      }
+      this.sessions.delete(sessionId);
+      this.qrStates.delete(sessionId);
+
+      // Create fresh session
+      await this.createSession(sessionId);
+      session = this.sessions.get(sessionId);
+    }
+
     // If already authenticated, return success
     if (session.status === 'ready') {
       return {
