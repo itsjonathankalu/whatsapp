@@ -3,6 +3,8 @@
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
 import { EventEmitter } from 'events';
+import { existsSync, readdirSync } from 'fs';
+import { join } from 'path';
 
 export class SessionManager extends EventEmitter {
   constructor() {
@@ -10,6 +12,63 @@ export class SessionManager extends EventEmitter {
     this.sessions = new Map();
     this.qrStates = new Map(); // Track QR generation state
     this.AUTH_DIR = process.env.AUTH_DIR || './.wwebjs_auth';
+  }
+
+  // Check if session exists on disk
+  sessionExistsOnDisk(sessionId) {
+    const sessionPath = join(this.AUTH_DIR, `session-${sessionId}`);
+    return existsSync(sessionPath);
+  }
+
+  // Load session from disk if it exists
+  async loadSessionFromDisk(sessionId) {
+    if (!this.sessionExistsOnDisk(sessionId)) {
+      return null;
+    }
+
+    console.log(`Loading session ${sessionId} from disk`);
+
+    // Create session object
+    const session = {
+      id: sessionId,
+      client: null,
+      status: 'initializing',
+      info: null,
+      qr: null,
+      createdAt: new Date(),
+    };
+
+    this.sessions.set(sessionId, session);
+
+    // Initialize client with existing session
+    const client = new Client({
+      authStrategy: new LocalAuth({
+        clientId: sessionId,
+        dataPath: this.AUTH_DIR,
+      }),
+      puppeteer: {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      },
+      qrMaxRetries: 1, // Important: Only 1 attempt after 60s
+    });
+
+    session.client = client;
+
+    // Set up event handlers
+    this.setupClientEvents(sessionId, client);
+
+    // Initialize client
+    try {
+      await client.initialize();
+      // Wait a bit for the client to restore session
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return session;
+    } catch (error) {
+      console.error(`Failed to load session ${sessionId} from disk:`, error);
+      this.sessions.delete(sessionId);
+      return null;
+    }
   }
 
   // Check if QR is currently active (within 60s window)
@@ -86,7 +145,13 @@ export class SessionManager extends EventEmitter {
 
   // Generate QR code with timeout handling
   async generateQR(sessionId) {
-    const session = this.sessions.get(sessionId);
+    let session = this.sessions.get(sessionId);
+
+    // If not in memory, try to load from disk
+    if (!session && this.sessionExistsOnDisk(sessionId)) {
+      session = await this.loadSessionFromDisk(sessionId);
+    }
+
     if (!session) {
       throw new Error('Session not found');
     }
@@ -215,7 +280,13 @@ export class SessionManager extends EventEmitter {
 
   // Get session status
   async getSessionStatus(sessionId) {
-    const session = this.sessions.get(sessionId);
+    let session = this.sessions.get(sessionId);
+
+    // If not in memory, try to load from disk
+    if (!session && this.sessionExistsOnDisk(sessionId)) {
+      session = await this.loadSessionFromDisk(sessionId);
+    }
+
     if (!session) {
       throw new Error('Session not found');
     }
@@ -233,7 +304,13 @@ export class SessionManager extends EventEmitter {
 
   // Send message
   async sendMessage(sessionId, params) {
-    const session = this.sessions.get(sessionId);
+    let session = this.sessions.get(sessionId);
+
+    // If not in memory, try to load from disk
+    if (!session && this.sessionExistsOnDisk(sessionId)) {
+      session = await this.loadSessionFromDisk(sessionId);
+    }
+
     if (!session) {
       throw new Error('Session not found');
     }
@@ -275,15 +352,35 @@ export class SessionManager extends EventEmitter {
     this.qrStates.delete(sessionId);
   }
 
+  // Get all sessions (both in memory and on disk)
+  async getAllSessions() {
+    const inMemory = Array.from(this.sessions.keys());
+
+    let onDisk = [];
+    try {
+      onDisk = readdirSync(this.AUTH_DIR)
+        .filter((dir) => dir.startsWith('session-'))
+        .map((dir) => dir.replace('session-', ''));
+    } catch (error) {
+      // AUTH_DIR might not exist yet
+      console.warn('Could not read auth directory:', error.message);
+    }
+
+    // Combine and deduplicate
+    const allSessions = [...new Set([...inMemory, ...onDisk])];
+    return allSessions;
+  }
+
   // Get health status
   async getHealthStatus() {
     const sessions = Array.from(this.sessions.values());
+    const allSessions = await this.getAllSessions();
 
     return {
       status: 'ok',
       uptime: process.uptime(),
       sessions: {
-        total: sessions.length,
+        total: allSessions.length,
         ready: sessions.filter((s) => s.status === 'ready').length,
         initializing: sessions.filter((s) => s.status === 'initializing').length,
         qr_pending: sessions.filter((s) => s.status === 'qr').length,
