@@ -48,6 +48,10 @@ export class SessionManager extends EventEmitter {
       }),
       puppeteer: {
         headless: true,
+        executablePath:
+          process.platform === 'darwin'
+            ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+            : undefined,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
       qrMaxRetries: 1, // Important: Only 1 attempt after 60s
