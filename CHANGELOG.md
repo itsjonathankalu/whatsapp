@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/tictic-dev/whatsapp/compare/v1.2.0...v1.3.0) (2025-07-24)
+
+
+### Features
+
+* enhance session recovery for disconnected sessions ([2e77f3c](https://github.com/tictic-dev/whatsapp/commit/2e77f3c938dca8db89f32b63ecb72717f3ded979))
+
 # [1.2.0](https://github.com/tictic-dev/whatsapp/compare/v1.1.3...v1.2.0) (2025-07-24)
 
 
