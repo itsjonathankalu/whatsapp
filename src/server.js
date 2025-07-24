@@ -1,180 +1,168 @@
+// server.js - Enhanced WhatsApp HTTP Service with proper QR handling
 import { createServer } from 'http';
-import { WhatsAppManager } from './manager.js';
+import { SessionManager } from './SessionManager.js';
+import { Router } from '../lib/Router.js';
+import { authMiddleware } from '../middleware/auth.js';
+import { validateRequest } from '../middleware/validation.js';
+import { errorHandler } from '../middleware/error.js';
 
-const manager = new WhatsAppManager();
-const AUTH_TOKEN = process.env.AUTH_TOKEN;
+const sessionManager = new SessionManager();
+const router = new Router();
 
-if (!AUTH_TOKEN) {
-  console.error('AUTH_TOKEN environment variable is required');
-  process.exit(1);
-}
+// Apply middleware
+router.use(authMiddleware);
+router.use(validateRequest);
 
-// Add validation functions
-const validatePhone = (phone) => {
-  if (!phone || typeof phone !== 'string') {
-    return false;
-  }
-  const cleaned = phone.replace(/\D/g, '');
-  return cleaned.length >= 8 && cleaned.length <= 15;
-};
+// ===== SESSION ROUTES =====
 
-const validateMessage = (message) =>
-  message && typeof message === 'string' && message.length <= 4096;
+// Create new session
+router.post('/sessions', async (req, res) => {
+  const { sessionId } = req.body;
 
-const validateSessionId = (sessionId) => {
-  if (!sessionId || typeof sessionId !== 'string') {
-    return false;
-  }
-  // Session ID should be alphanumeric, hyphens, underscores (reasonable identifier)
-  return /^[a-zA-Z0-9_-]+$/.test(sessionId) && sessionId.length <= 50;
-};
-
-/**
- * Extract session ID from request headers - now mandatory
- * @param {import('http').IncomingMessage} req
- * @returns {string|null}
- */
-const getSessionId = (req) => req.headers['x-session-id'] || null;
-
-/**
- * Parse JSON body from request
- * @param {import('http').IncomingMessage} req
- * @returns {Promise<any>}
- */
-const parseBody = (req) =>
-  new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk;
+  if (!sessionId) {
+    return res.status(400).json({
+      error: 'Session ID required',
+      help: 'Provide a unique sessionId in request body',
     });
-    req.on('end', () => {
-      try {
-        resolve(JSON.parse(body));
-      } catch (error) {
-        reject(new Error('Invalid JSON'));
-      }
-    });
-  });
-
-/**
- * Send JSON response
- * @param {import('http').ServerResponse} res
- * @param {number} statusCode
- * @param {any} data
- */
-const sendJson = (res, statusCode, data) => {
-  res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(data));
-};
-
-const server = createServer(async (req, res) => {
-  // Simple auth check
-  const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    sendJson(res, 401, { error: 'Missing authorization header' });
-    return;
   }
-
-  const token = authHeader.substring(7);
-  if (token !== AUTH_TOKEN) {
-    sendJson(res, 401, { error: 'Invalid token' });
-    return;
-  }
-
-  const url = new URL(req.url, `http://${req.headers.host}`);
 
   try {
-    // Health check - no session ID required
-    if (url.pathname === '/health' && req.method === 'GET') {
-      const activeSessions = manager.getActiveSessions();
-      sendJson(res, 200, {
-        status: 'ok',
-        sessions: activeSessions,
-        uptime: process.uptime(),
-      });
-      return;
-    }
-
-    // All other endpoints require session ID
-    const sessionId = getSessionId(req);
-    if (!sessionId) {
-      sendJson(res, 400, {
-        error: 'Missing X-Session-Id header. Session ID is required for all operations.',
-      });
-      return;
-    }
-
-    if (!validateSessionId(sessionId)) {
-      sendJson(res, 400, {
-        error:
-          'Invalid session ID. Use alphanumeric characters, hyphens, and underscores only (max 50 chars).',
-      });
-      return;
-    }
-
-    // Send message
-    if (url.pathname === '/send' && req.method === 'POST') {
-      const body = await parseBody(req);
-
-      if (!validatePhone(body.to)) {
-        sendJson(res, 400, { error: 'Invalid phone number' });
-        return;
-      }
-
-      if (!validateMessage(body.message)) {
-        sendJson(res, 400, { error: 'Invalid message (max 4096 chars)' });
-        return;
-      }
-
-      const result = await manager.sendMessage(sessionId, body.to, body.message);
-      sendJson(res, 200, result);
-      return;
-    }
-
-    // Get QR code for setup
-    if (url.pathname === '/qr' && req.method === 'GET') {
-      const qr = await manager.getQR(sessionId);
-      sendJson(res, 200, qr);
-      return;
-    }
-
-    // Get session status
-    if (url.pathname === '/status' && req.method === 'GET') {
-      const status = manager.getStatus(sessionId);
-      sendJson(res, 200, status);
-      return;
-    }
-
-    sendJson(res, 404, { error: 'Not found' });
+    const result = await sessionManager.createSession(sessionId);
+    res.status(201).json(result);
   } catch (error) {
-    console.error('Error:', error);
-    sendJson(res, 500, { error: error.message || 'Internal server error' });
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get session status
+router.get('/sessions/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    const status = await sessionManager.getSessionStatus(sessionId);
+    res.json(status);
+  } catch (error) {
+    res.status(404).json({ error: 'Session not found' });
+  }
+});
+
+// Get QR code (with 60s timeout handling)
+router.get('/sessions/:sessionId/qr', async (req, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    // Check if QR is already active (60s window)
+    if (sessionManager.isQRActive(sessionId)) {
+      return res.status(409).json({
+        error: 'QR_ALREADY_ACTIVE',
+        message: 'QR code already generated for this session',
+        retry_after: sessionManager.getQRTimeRemaining(sessionId),
+        help: 'Wait for current QR to expire or scan it',
+      });
+    }
+
+    const result = await sessionManager.generateQR(sessionId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Replace session (new feature)
+router.put('/sessions/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+  const { preserveState = false } = req.body;
+
+  try {
+    const result = await sessionManager.replaceSession(sessionId, { preserveState });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Destroy session
+router.delete('/sessions/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    await sessionManager.destroySession(sessionId);
+    res.status(204).send();
+  } catch (error) {
+    res.status(404).json({ error: 'Session not found' });
+  }
+});
+
+// ===== MESSAGE ROUTES =====
+
+// Send message
+router.post('/sessions/:sessionId/messages', async (req, res) => {
+  const { sessionId } = req.params;
+  const { to, text } = req.body;
+
+  if (!to || !text) {
+    return res.status(400).json({
+      error: 'Invalid request',
+      help: 'Provide "to" and "text"',
+    });
+  }
+
+  try {
+    const result = await sessionManager.sendMessage(sessionId, { to, text });
+    res.status(201).json(result);
+  } catch (error) {
+    if (error.message.includes('not ready')) {
+      res.status(503).json({
+        error: 'Session not ready',
+        help: 'Check session status or authenticate with QR',
+      });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// ===== HEALTH & MONITORING =====
+
+router.get('/health', async (req, res) => {
+  const health = await sessionManager.getHealthStatus();
+  res.json(health);
+});
+
+// ===== SERVER SETUP =====
+
+const server = createServer(async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Id');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+
+  // Route request
+  try {
+    await router.handle(req, res);
+  } catch (error) {
+    errorHandler(error, req, res);
   }
 });
 
 // Graceful shutdown
-const gracefulShutdown = async (signal) => {
-  console.log(`Received ${signal}, shutting down gracefully...`);
-
-  try {
-    await manager.shutdown();
-    console.log('Graceful shutdown completed');
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  await sessionManager.shutdown();
+  server.close(() => {
+    console.log('Server closed');
     process.exit(0);
-  } catch (error) {
-    console.error('Error during shutdown:', error);
-    process.exit(1);
-  }
-};
-
-['SIGTERM', 'SIGINT'].forEach((signal) => {
-  process.on(signal, () => gracefulShutdown(signal));
+  });
 });
-
-// Start cleanup interval
-manager.startCleanupInterval();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`WhatsApp HTTP service running on :${PORT}`);
-  console.log('Session ID required via X-Session-Id header for all operations');
+  console.log(`WhatsApp HTTP Service running on :${PORT}`);
+  console.log('Features: QR timeout handling, session replacement, RESTful API');
 });
