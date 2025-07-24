@@ -157,5 +157,4 @@ process.on('SIGTERM', async () => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`WhatsApp HTTP Service running on :${PORT}`);
-  console.log('Features: QR timeout handling, session replacement, RESTful API');
 });
