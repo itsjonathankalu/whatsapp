@@ -1,3 +1,104 @@
+# TicTic ✓✓ - WhatsApp HTTP Service
+
+HTTP service for WhatsApp messages. Built on [whatsapp-web.js](https://wwebjs.dev/).
+
+[Documentação em Português](#pt-br)
+
+## Features
+
+- 🚀 Send text messages via REST API
+- 📱 QR code authentication with 60s timeout
+- 🔄 Multiple isolated sessions
+- ⚡ Session replacement without losing authentication
+- 🔒 Bearer token authentication
+- 💾 Persistence via Docker volumes
+
+## Quick Start
+
+```bash
+# Clone and configure
+git clone https://github.com/tictic-dev/whatsapp.git
+cd whatsapp
+export AUTH_TOKEN=your-secret-token-here
+
+# Run with Docker
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f whatsapp
+```
+
+## API Usage
+
+### 1. Create Session
+
+```bash
+# With specific ID
+curl -X POST http://localhost:3000/sessions \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "my-session"}'
+
+# Or leave empty to auto-generate UUID
+curl -X POST http://localhost:3000/sessions \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+### 2. Get QR Code
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3000/sessions/my-session/qr
+```
+
+Scan the QR code with WhatsApp on your phone.
+
+### 3. Send Message
+
+```bash
+curl -X POST http://localhost:3000/sessions/my-session/messages \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "text": "Hello from TicTic!"
+  }'
+```
+
+## Key Endpoints
+
+- `POST /sessions` - Create session
+- `GET /sessions/{id}` - Session status
+- `GET /sessions/{id}/qr` - QR code (60s timeout)
+- `POST /sessions/{id}/messages` - Send message
+- `DELETE /sessions/{id}` - Delete session
+- `GET /health` - Service status
+
+## Resource Requirements
+
+- **RAM**: ~512MB per session (Chromium)
+- **CPU**: 1 vCPU
+- **Storage**: 1GB
+
+## ⚠️ Limitations
+
+- **Resource intensive** (~512MB RAM for Chromium)
+- **QR timeout**: 1 per 60 seconds per session
+- **Unofficial**: WhatsApp doesn't support bots on personal accounts
+- **Rate limiting**: Implement in your gateway
+
+## License
+
+MIT License - see [LICENSE](./LICENSE).
+
+Construído com ❤️ sobre [whatsapp-web.js](https://wwebjs.dev/)
+
+---
+
+<a name="pt-br"></a>
+
 # TicTic ✓✓ - Serviço HTTP WhatsApp
 
 HTTP service para mensagens WhatsApp. Construído sobre [whatsapp-web.js](https://wwebjs.dev/).
@@ -135,104 +236,3 @@ npm run lint        # Verificar código
 ## Licença
 
 MIT License - veja [LICENSE](./LICENSE).
-
----
-
-## English Documentation
-
-### TicTic ✓✓ - WhatsApp HTTP Service
-
-HTTP service for WhatsApp messages. Built on [whatsapp-web.js](https://wwebjs.dev/).
-
-### Features
-
-- 🚀 Send text messages via REST API
-- 📱 QR code authentication with 60s timeout
-- 🔄 Multiple isolated sessions
-- ⚡ Session replacement without losing authentication
-- 🔒 Bearer token authentication
-- 💾 Persistence via Docker volumes
-
-### Quick Start
-
-```bash
-# Clone and configure
-git clone https://github.com/tictic-dev/whatsapp.git
-cd whatsapp
-export AUTH_TOKEN=your-secret-token-here
-
-# Run with Docker
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f whatsapp
-```
-
-### API Usage
-
-#### 1. Create Session
-
-```bash
-# With specific ID
-curl -X POST http://localhost:3000/sessions \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId": "my-session"}'
-
-# Or leave empty to auto-generate UUID
-curl -X POST http://localhost:3000/sessions \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
-
-#### 2. Get QR Code
-
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:3000/sessions/my-session/qr
-```
-
-Scan the QR code with WhatsApp on your phone.
-
-#### 3. Send Message
-
-```bash
-curl -X POST http://localhost:3000/sessions/my-session/messages \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "5511999887766",
-    "text": "Hello from TicTic!"
-  }'
-```
-
-### Key Endpoints
-
-- `POST /sessions` - Create session
-- `GET /sessions/{id}` - Session status
-- `GET /sessions/{id}/qr` - QR code (60s timeout)
-- `POST /sessions/{id}/messages` - Send message
-- `DELETE /sessions/{id}` - Delete session
-- `GET /health` - Service status
-
-### Resource Requirements
-
-- **RAM**: ~512MB per session (Chromium)
-- **CPU**: 1 vCPU
-- **Storage**: 1GB
-
-### ⚠️ Limitations
-
-- **Resource intensive** (~512MB RAM for Chromium)
-- **QR timeout**: 1 per 60 seconds per session
-- **Unofficial**: WhatsApp doesn't support bots on personal accounts
-- **Rate limiting**: Implement in your gateway
-
-### License
-
-MIT License - see [LICENSE](./LICENSE).
-
----
-
-Construído com ❤️ sobre [whatsapp-web.js](https://wwebjs.dev/)
