@@ -6,6 +6,9 @@ import { EventEmitter } from 'events';
 import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 
+// Get MessageMedia from the same package
+const MessageMedia = pkg.MessageMedia || pkg.default?.MessageMedia;
+
 export class SessionManager extends EventEmitter {
   constructor() {
     super();
@@ -322,7 +325,7 @@ export class SessionManager extends EventEmitter {
     };
   }
 
-  // Send message
+  // Send message (text or media)
   async sendMessage(sessionId, params) {
     let session = this.sessions.get(sessionId);
 
@@ -339,16 +342,49 @@ export class SessionManager extends EventEmitter {
       throw new Error('Session not ready');
     }
 
-    const { to, text } = params;
+    const { to, text, media, options = {} } = params;
+
+    // Validate that we have content to send
+    if (!text && !media) {
+      throw new Error('Must provide either text or media');
+    }
+
+    // Format phone number
     const formattedNumber = this.formatPhoneNumber(to);
     const chatId = formattedNumber + '@c.us';
 
-    const message = await session.client.sendMessage(chatId, text);
+    let content;
+
+    // Handle media if provided
+    if (media) {
+      try {
+        const { url, base64, mimetype, filename } = media;
+
+        if (url) {
+          // From URL
+          content = await MessageMedia.fromUrl(url);
+        } else if (base64 && mimetype) {
+          // From base64 data
+          content = new MessageMedia(mimetype, base64, filename);
+        } else {
+          throw new Error('Media must include either url or base64+mimetype');
+        }
+      } catch (error) {
+        throw new Error(`Failed to process media: ${error.message}`);
+      }
+    } else {
+      // Plain text message
+      content = text;
+    }
+
+    // Send the message
+    const message = await session.client.sendMessage(chatId, content, options);
 
     return {
       success: true,
       messageId: message.id._serialized,
       to: formattedNumber,
+      type: media ? 'media' : 'text',
       timestamp: new Date().toISOString(),
     };
   }

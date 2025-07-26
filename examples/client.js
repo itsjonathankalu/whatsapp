@@ -58,9 +58,17 @@ class WhatsAppClient {
     return this.request('DELETE', `/sessions/${sessionId}`);
   }
 
-  // Message methods
-  async sendMessage(sessionId, to, text) {
-    return this.request('POST', `/sessions/${sessionId}/messages`, { to, text });
+  // Send message (text or media) - unified method
+  async sendMessage(sessionId, params) {
+    // Handle both old API (3 params) and new API (2 params with object)
+    if (typeof params === 'string') {
+      // Old API: sendMessage(sessionId, to, text)
+      const [to, text] = arguments.slice(1);
+      return this.request('POST', `/sessions/${sessionId}/messages`, { to, text });
+    } else {
+      // New unified API: sendMessage(sessionId, { to, text, media, options })
+      return this.request('POST', `/sessions/${sessionId}/messages`, params);
+    }
   }
 
   // Health

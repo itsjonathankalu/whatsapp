@@ -92,20 +92,53 @@ router.delete('/sessions/:sessionId', async (req, res) => {
 
 // ===== MESSAGE ROUTES =====
 
-// Send message
+// Send message (text or media)
 router.post('/sessions/:sessionId/messages', async (req, res) => {
   const { sessionId } = req.params;
-  const { to, text } = req.body;
+  const { to, text, media, options } = req.body;
 
-  if (!to || !text) {
+  // Validate recipient
+  if (!to) {
     return res.status(400).json({
       error: 'Invalid request',
-      help: 'Provide "to" and "text"',
+      help: 'Provide "to" (recipient phone number)',
     });
   }
 
+  // Validate content
+  if (!text && !media) {
+    return res.status(400).json({
+      error: 'Invalid request',
+      help: 'Provide either "text" or "media"',
+    });
+  }
+
+  // Validate media structure if provided
+  if (media) {
+    const { url, base64, mimetype } = media;
+
+    if (!url && !base64) {
+      return res.status(400).json({
+        error: 'Invalid media',
+        help: 'Media must include either "url" or "base64" with "mimetype"',
+      });
+    }
+
+    if (base64 && !mimetype) {
+      return res.status(400).json({
+        error: 'Invalid media',
+        help: 'When using base64, "mimetype" is required',
+      });
+    }
+  }
+
   try {
-    const result = await sessionManager.sendMessage(sessionId, { to, text });
+    const result = await sessionManager.sendMessage(sessionId, {
+      to,
+      text,
+      media,
+      options,
+    });
     res.status(201).json(result);
   } catch (error) {
     if (error.message.includes('not ready')) {
@@ -113,8 +146,14 @@ router.post('/sessions/:sessionId/messages', async (req, res) => {
         error: 'Session not ready',
         help: 'Check session status or authenticate with QR',
       });
+    } else if (error.message.includes('not found')) {
+      res.status(404).json({
+        error: 'Session not found',
+      });
     } else {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({
+        error: error.message,
+      });
     }
   }
 });

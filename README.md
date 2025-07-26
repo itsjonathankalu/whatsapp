@@ -6,7 +6,9 @@ HTTP service for WhatsApp messages. Built on [whatsapp-web.js](https://wwebjs.de
 
 ## Features
 
-- 🚀 Send text messages via REST API
+- 🚀 Send text and media messages via REST API
+- 🎵 Audio support (MP3, OGG, voice notes)
+- 📸 Images, videos, and documents
 - 📱 QR code authentication with 60s timeout
 - 🔄 Multiple isolated sessions
 - ⚡ Session replacement without losing authentication
@@ -55,15 +57,46 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 Scan the QR code with WhatsApp on your phone.
 
-### 3. Send Message
+### 3. Send Messages
+
+The `/messages` endpoint handles both text and media:
 
 ```bash
+# Text message
 curl -X POST http://localhost:3000/sessions/my-session/messages \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "5511999887766",
     "text": "Hello from TicTic!"
+  }'
+
+# Audio message
+curl -X POST http://localhost:3000/sessions/my-session/messages \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "media": {
+      "url": "https://example.com/audio.mp3"
+    },
+    "options": {
+      "caption": "🎵 Listen to this!"
+    }
+  }'
+
+# Voice note
+curl -X POST http://localhost:3000/sessions/my-session/messages \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "media": {
+      "url": "https://example.com/voice.ogg"
+    },
+    "options": {
+      "sendAudioAsVoice": true
+    }
   }'
 ```
 
@@ -105,7 +138,9 @@ HTTP service para mensagens WhatsApp. Construído sobre [whatsapp-web.js](https:
 
 ## Recursos
 
-- 🚀 Envie mensagens de texto via REST API
+- 🚀 Envie mensagens de texto e mídia via REST API unificada
+- 🎵 Suporte a áudio (MP3, OGG, notas de voz)
+- 📸 Imagens, vídeos e documentos
 - 📱 Autenticação por QR code com timeout de 60s
 - 🔄 Múltiplas sessões isoladas
 - ⚡ Substituição de sessão sem perder autenticação
@@ -146,15 +181,46 @@ curl -H "Authorization: Bearer SEU_TOKEN" \
 
 Escaneie o QR code com WhatsApp no celular.
 
-### 3. Enviar Mensagem
+### 3. Enviar Mensagens
+
+O endpoint `/messages` lida com texto e mídia:
 
 ```bash
+# Mensagem de texto
 curl -X POST http://localhost:3000/sessions/minha-sessao/messages \
   -H "Authorization: Bearer SEU_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "5511999887766",
     "text": "Olá do TicTic!"
+  }'
+
+# Mensagem de áudio
+curl -X POST http://localhost:3000/sessions/minha-sessao/messages \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "media": {
+      "url": "https://example.com/audio.mp3"
+    },
+    "options": {
+      "caption": "🎵 Escute isso!"
+    }
+  }'
+
+# Nota de voz
+curl -X POST http://localhost:3000/sessions/minha-sessao/messages \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999887766",
+    "media": {
+      "url": "https://example.com/voice.ogg"
+    },
+    "options": {
+      "sendAudioAsVoice": true
+    }
   }'
 ```
 
@@ -163,7 +229,7 @@ curl -X POST http://localhost:3000/sessions/minha-sessao/messages \
 - `POST /sessions` - Criar sessão
 - `GET /sessions/{id}` - Status da sessão
 - `GET /sessions/{id}/qr` - QR code (timeout 60s)
-- `POST /sessions/{id}/messages` - Enviar mensagem
+- `POST /sessions/{id}/messages` - Enviar mensagem (texto ou mídia)
 - `DELETE /sessions/{id}` - Deletar sessão
 - `GET /health` - Status do serviço
 
