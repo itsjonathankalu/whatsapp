@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/tictic-dev/whatsapp/compare/v1.3.1...v1.4.0) (2025-07-26)
+
+
+### Features
+
+* unify message sending to support text and media ([940f9ec](https://github.com/tictic-dev/whatsapp/commit/940f9ec336fd65119daf90b8cb5c41752cc212f0))
+
 ## [1.3.1](https://github.com/tictic-dev/whatsapp/compare/v1.3.0...v1.3.1) (2025-07-24)
 
 
